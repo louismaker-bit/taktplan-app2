@@ -47,7 +47,7 @@
     body{
       margin: 0;
       font-family: var(--sans);
-      /* FIX: no green gradient; keep subtle blue only */
+      /* FIX: remove green radial gradient; keep a subtle blue only */
       background:
         radial-gradient(1200px 600px at 20% -10%, rgba(125,211,252,.14), transparent 60%),
         var(--bg);
@@ -68,25 +68,20 @@
       --accent:#0284c7; --ok:rgba(34,197,94,.14); --err:rgba(239,68,68,.12); --shadow:0 10px 30px rgba(0,0,0,.10);
     }
 
-    .wrap{ max-width: 820px; margin: 0 auto; padding: 14px; padding-top: 88px; }
-
+    /* --------- Topbar (NOT fixed; scroll hides it) --------- */
     .topbar{
-      position: fixed; left: 0; right: 0; top: 0;
       padding: 12px 14px calc(12px + env(safe-area-inset-top));
       backdrop-filter: blur(14px);
-      background: linear-gradient(to bottom, rgba(0,0,0,.35), transparent);
+      background: linear-gradient(to bottom, rgba(0,0,0,.30), transparent);
       border-bottom: 1px solid var(--border);
-      z-index: 50;
     }
-
-    /* iPhone 14 Pro portrait: wrap so nothing is cut */
     .topbar-inner{
       max-width: 820px;
       margin: 0 auto;
       display:flex;
       gap:8px;
       align-items:center;
-      flex-wrap: wrap;
+      flex-wrap: wrap; /* iPhone 14 Pro portrait: wrap */
     }
 
     .title{ font-weight: 900; letter-spacing: .2px; }
@@ -105,6 +100,8 @@
       padding: 0 10px; font-weight: 800;
     }
     .seg button.active{ color: var(--text); background: rgba(125,211,252,.14); }
+
+    .wrap{ max-width: 820px; margin: 0 auto; padding: 14px; }
 
     .card{
       border: 1px solid var(--border);
@@ -126,7 +123,6 @@
       background: var(--card); color: var(--text);
       padding: 12px; font-size: 14px;
     }
-
     select, input{
       width: 100%;
       height: var(--tap);
@@ -160,7 +156,6 @@
 
     .result.ok{ background: var(--ok); border-color: rgba(34,197,94,.35); }
     .result.err{ background: var(--err); border-color: rgba(239,68,68,.35); }
-
     .mono{ font-family: var(--mono); }
 
     .favbar{
@@ -180,9 +175,16 @@
 
     .hide{ display:none !important; }
 
+    /* Screenshot-friendly week table */
     table{ width:100%; border-collapse: collapse; margin-top: 10px; }
-    th, td{ border-bottom: 1px solid var(--border); padding: 10px 6px; text-align:left; font-size: 14px; }
+    th, td{ border-bottom: 1px solid var(--border); padding: 8px 6px; text-align:left; font-size: 14px; }
     th{ color: var(--muted); font-weight: 900; }
+
+    /* tighter week table on mobile so more fits on one screen */
+    #week table th, #week table td{ padding: 6px 4px; font-size: 13px; }
+    @media (max-width: 420px){
+      #week table th, #week table td{ padding: 5px 3px; font-size: 12px; }
+    }
 
     /* Compact mode */
     body.compact .small,
@@ -190,7 +192,7 @@
     body.compact .storageCard,
     body.compact .planSaveCard { display:none !important; }
     body.compact textarea{ min-height: 96px; }
-    body.compact .wrap{ padding-top: 84px; }
+
   </style>
 </head>
 
@@ -199,7 +201,7 @@
     <div class="topbar-inner">
       <div>
         <div class="title">Taktplan</div>
-        <div class="sub">Offline • Favoriten • Heute/Jetzt • Vergleich</div>
+        <div class="sub">Offline • Favoriten • Heute/Jetzt • Vergleich • Wochenübersicht</div>
       </div>
       <div class="grow"></div>
 
@@ -690,8 +692,9 @@ Tabelle:
     const shiftName = (shift==="early") ? "Früh" : (shift==="late" ? "Spät" : "Nacht");
     nowHint.textContent = `Heute: ${dayName} • Schicht: ${shiftName} • ${info.label}`;
 
-    // Auto-update if comparison view active
     if(currentView==="compare") runCompare(true);
+    else if(currentView==="single") runSingle(true);
+
     saveLastQuery();
   }
 
@@ -714,7 +717,7 @@ Tabelle:
         if(target){
           elEmp.value = target.value;
           hideWeek();
-          if(currentView==="compare") runCompare(true);
+          maybeAutoUpdate();
           saveLastQuery();
         }
       });
@@ -862,7 +865,6 @@ Tabelle:
       if(last.view) currentView = last.view;
     }
 
-    // Default B to "next" if empty or same and more options exist
     if(elEmp2.options.length > 1 && normName(elEmp2.value) === normName(elEmp.value)){
       const aIdx = elEmp.selectedIndex >= 0 ? elEmp.selectedIndex : 0;
       const bIdx = (aIdx + 1) % elEmp2.options.length;
@@ -881,10 +883,8 @@ Tabelle:
     renderFavbar();
     renderDiagnostics(diag, rpd);
 
-    // Auto update if compare view is active
-    if(currentView === "compare"){
-      runCompare(true);
-    }
+    if(currentView === "compare") runCompare(true);
+    else if(currentView === "single") runSingle(true);
 
     if(!silent){
       showOk(`Plan angewendet. Du kannst jetzt abfragen, vergleichen oder „Heute/Jetzt“ nutzen.`, true);
@@ -922,6 +922,7 @@ Tabelle:
         <span class="pill"><strong>${employee}</strong></span>
         <span class="pill">${dayName}</span>
         <span class="pill">Runde <strong>${roundNo}</strong></span>
+        ${auto ? `<span class="pill">Auto</span>` : ``}
       </div>
       <div style="font-size:22px; font-weight:900; margin-top:10px;">${row.bezeichnung}</div>
       <div class="mono" style="margin-top:8px; color: var(--muted);">Takt ${row.takt}</div>
@@ -972,7 +973,7 @@ Tabelle:
     if(!plan) return;
     try{
       if(currentView==="compare") runCompare(true);
-      else if(currentView==="single") runSingle(true);
+      else runSingle(true);
     } catch(e){
       // ignore on auto-update
     }
@@ -1043,6 +1044,30 @@ Tabelle:
     refreshPlanSelect();
 
     showOk(`Plan gelöscht: <strong>${name}</strong>`, true);
+  }
+
+  // ---------- week view ----------
+  function showWeek(employee){
+    if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
+
+    const data = plan.weeklyOverview(employee, 5);
+
+    elWeek.classList.remove("hide");
+    elWeek.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+        <div style="font-weight:900;">Wochenübersicht (Mo–Fr): ${employee}</div>
+        <div class="small">Runden/Tag: ${plan.roundsPerDay}</div>
+      </div>
+      <table>
+        <thead><tr><th>Tag</th><th>R</th><th>Station</th><th>Takt</th></tr></thead>
+        <tbody>
+          ${data.map(r=>`<tr><td>${r.tag}</td><td>${r.runde}</td><td>${r.station}</td><td class="mono">${r.takt}</td></tr>`).join("")}
+        </tbody>
+      </table>
+      <div class="small" style="margin-top:10px;">
+        Screenshot-Tipp: scrolle so, dass die Topbar weg ist – dann passt mehr aufs Bild.
+      </div>
+    `;
   }
 
   // ---------- init ----------
@@ -1141,7 +1166,7 @@ Tabelle:
       elEmp.value = b;
       elEmp2.value = a;
       hideWeek();
-      if(currentView==="compare") runCompare(true);
+      maybeAutoUpdate();
       saveLastQuery();
       showOk("Mitarbeiter A und B getauscht.", true);
     } catch(e){
@@ -1152,25 +1177,10 @@ Tabelle:
   elWeekBtn.addEventListener("click", ()=>{
     try{
       haptic("tap");
-      if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
-      const employee = elEmp.value;
-      const data = plan.weeklyOverview(employee, 5);
       setView("single");
+      const employee = elEmp.value;
+      showWeek(employee);
       saveLastQuery();
-
-      elWeek.classList.remove("hide");
-      elWeek.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div style="font-weight:900;">Wochenübersicht (Mo–Fr): ${employee}</div>
-          <div class="small">Runden/Tag: ${plan.roundsPerDay}</div>
-        </div>
-        <table>
-          <thead><tr><th>Tag</th><th>Runde</th><th>Station</th><th>Takt</th></tr></thead>
-          <tbody>
-            ${data.map(r=>`<tr><td>${r.tag}</td><td>${r.runde}</td><td>${r.station}</td><td class="mono">${r.takt}</td></tr>`).join("")}
-          </tbody>
-        </table>
-      `;
     } catch(e){
       showErr(e.message || String(e), true);
     }
@@ -1228,14 +1238,13 @@ Tabelle:
     }
   });
 
-  // Auto-update hooks (only meaningful if plan exists)
+  // Auto-update hooks
   [elEmp, elEmp2, elDay, elRound].forEach(el=>{
     el.addEventListener("change", ()=>{
       saveLastQuery();
       maybeAutoUpdate();
     });
   });
-
 </script>
 </body>
 </html>
