@@ -2,202 +2,406 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Taktplan-Auswerter</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Taktplan</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 16px; }
-    h1 { font-size: 20px; margin: 0 0 12px; }
-    label { display:block; font-weight: 600; margin: 12px 0 6px; }
-    textarea { width: 100%; min-height: 140px; font-size: 14px; }
-    select, input { width: 100%; padding: 10px; font-size: 16px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 14px; }
-    .ok { border-color: #b7e1c1; background: #f3fff6; }
-    .err { border-color: #f2b8b5; background: #fff5f5; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    button { width: 100%; padding: 12px; font-size: 16px; border-radius: 12px; border: 1px solid #ccc; background: #f7f7f7; }
-    .small { font-size: 12px; color: #666; }
-    table { width:100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border-bottom: 1px solid #eee; padding: 8px; text-align:left; font-size: 14px; }
-    th { font-weight: 700; }
-    .pill { display:inline-block; padding: 2px 8px; border:1px solid #ddd; border-radius: 999px; font-size: 12px; background:#fafafa; }
+    :root{
+      --bg: #0b0c10;
+      --card: rgba(255,255,255,.06);
+      --card2: rgba(255,255,255,.08);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.62);
+      --border: rgba(255,255,255,.14);
+      --accent: #7dd3fc;
+      --ok: rgba(34,197,94,.16);
+      --err: rgba(239,68,68,.18);
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+      --pad: 14px;
+      --tap: 48px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg: #f6f7fb;
+        --card: rgba(255,255,255,.9);
+        --card2: rgba(255,255,255,.96);
+        --text: rgba(10,12,16,.92);
+        --muted: rgba(10,12,16,.62);
+        --border: rgba(10,12,16,.12);
+        --accent: #0284c7;
+        --ok: rgba(34,197,94,.14);
+        --err: rgba(239,68,68,.12);
+        --shadow: 0 10px 30px rgba(0,0,0,.10);
+      }
+    }
+    html, body { height: 100%; }
+    body{
+      margin: 0;
+      font-family: var(--sans);
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(125,211,252,.18), transparent 60%),
+                  radial-gradient(1200px 600px at 80% 10%, rgba(34,197,94,.10), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: 28px;
+    }
+
+    body.force-dark{
+      --bg:#0b0c10; --card:rgba(255,255,255,.06); --card2:rgba(255,255,255,.08);
+      --text:rgba(255,255,255,.92); --muted:rgba(255,255,255,.62); --border:rgba(255,255,255,.14);
+      --accent:#7dd3fc; --ok:rgba(34,197,94,.16); --err:rgba(239,68,68,.18); --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    body.force-light{
+      --bg:#f6f7fb; --card:rgba(255,255,255,.92); --card2:rgba(255,255,255,.98);
+      --text:rgba(10,12,16,.92); --muted:rgba(10,12,16,.62); --border:rgba(10,12,16,.12);
+      --accent:#0284c7; --ok:rgba(34,197,94,.14); --err:rgba(239,68,68,.12); --shadow:0 10px 30px rgba(0,0,0,.10);
+    }
+
+    .wrap{ max-width: 820px; margin: 0 auto; padding: 14px; padding-top: 74px; }
+    .topbar{
+      position: fixed; left: 0; right: 0; top: 0;
+      padding: 12px 14px calc(12px + env(safe-area-inset-top));
+      backdrop-filter: blur(14px);
+      background: linear-gradient(to bottom, rgba(0,0,0,.35), transparent);
+      border-bottom: 1px solid var(--border);
+      z-index: 50;
+    }
+    .topbar-inner{ max-width: 820px; margin: 0 auto; display:flex; gap:10px; align-items:center; }
+    .title{ font-weight: 900; letter-spacing: .2px; }
+    .sub{ font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .grow{ flex: 1; }
+    .seg{
+      display:flex; border: 1px solid var(--border); border-radius: 999px; overflow:hidden;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+    .seg button{
+      height: 38px; min-width: 84px;
+      border: 0; background: transparent; color: var(--muted);
+      padding: 0 12px; font-weight: 800;
+    }
+    .seg button.active{ color: var(--text); background: rgba(125,211,252,.14); }
+
+    .card{
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: var(--pad);
+      background: var(--card2);
+      box-shadow: var(--shadow);
+      margin-top: 12px;
+    }
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 540px){ .grid2{ grid-template-columns: 1fr; } }
+
+    label{ display:block; font-weight: 900; margin: 10px 0 6px; color: var(--text); }
+    textarea{
+      width:100%; min-height: 130px; resize: vertical;
+      border-radius: 14px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text);
+      padding: 12px; font-size: 14px;
+    }
+    select, input{
+      width: 100%;
+      height: var(--tap);
+      border-radius: 14px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text);
+      padding: 0 12px; font-size: 16px;
+    }
+    button.btn{
+      height: var(--tap);
+      border-radius: 14px; border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.04));
+      color: var(--text);
+      font-weight: 900;
+      width: 100%;
+    }
+    button.btn.primary{
+      border-color: rgba(125,211,252,.35);
+      background: linear-gradient(180deg, rgba(125,211,252,.22), rgba(125,211,252,.10));
+    }
+    button.btn:active{ transform: translateY(1px); }
+
+    .small{ font-size: 12px; color: var(--muted); line-height: 1.35; }
+    .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      padding: 6px 10px; border: 1px solid var(--border); border-radius: 999px;
+      background: var(--card); color: var(--muted); font-size: 12px;
+      margin: 6px 6px 0 0;
+    }
+    .result.ok{ background: var(--ok); border-color: rgba(34,197,94,.35); }
+    .result.err{ background: var(--err); border-color: rgba(239,68,68,.35); }
+    .mono{ font-family: var(--mono); }
+
+    .favbar{
+      display:flex; flex-wrap: wrap; gap: 8px;
+      margin-top: 8px;
+    }
+    .favbar button{
+      height: 40px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-weight: 900;
+    }
+    .favbar button:active{ transform: translateY(1px); }
+
+    .hide{ display:none !important; }
+
+    table{ width:100%; border-collapse: collapse; margin-top: 10px; }
+    th, td{ border-bottom: 1px solid var(--border); padding: 10px 6px; text-align:left; font-size: 14px; }
+    th{ color: var(--muted); font-weight: 900; }
+
+    /* Compact mode */
+    body.compact .small,
+    body.compact .diagnostics,
+    body.compact .storageCard,
+    body.compact .planSaveCard,
+    body.compact .exportCard { display:none !important; }
+    body.compact textarea{ min-height: 96px; }
+    body.compact .wrap{ padding-top: 68px; }
   </style>
 </head>
-<body>
-  <h1>Taktplan-Auswerter (offline + Komfort)</h1>
 
-  <div class="card">
-    <label for="planSelect">Gespeicherter Plan (aktiv)</label>
-    <select id="planSelect"></select>
-    <div class="row" style="margin-top:10px;">
-      <button id="loadSaved">Laden</button>
-      <button id="deleteSaved">Löschen</button>
-    </div>
-    <div class="small" style="margin-top:8px;">
-      Auto-Save überschreibt automatisch den aktiven Plan nach erfolgreichem Apply (wenn aktiviert).
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <div class="title">Taktplan</div>
+        <div class="sub">Offline • Favoriten • Heute/Jetzt</div>
+      </div>
+      <div class="grow"></div>
+      <div class="seg" aria-label="Theme">
+        <button id="themeAuto" class="active" type="button">Auto</button>
+        <button id="themeDark" type="button">Dark</button>
+        <button id="themeLight" type="button">Light</button>
+      </div>
+      <div class="seg" aria-label="Mode">
+        <button id="modeFull" class="active" type="button">Full</button>
+        <button id="modeCompact" type="button">Kompakt</button>
+      </div>
     </div>
   </div>
 
-  <label for="table">Plan einfügen (OCR oder Tabelle)</label>
-  <textarea id="table" placeholder="OCR-Beispiel:
-1 Airbag LISA 2 Bepl. Re. BESETZT 3 Ablage Li. EVGENIJ ...
+  <div class="wrap">
 
-Tabellen-Beispiel:
+    <div class="card storageCard">
+      <label>Gespeicherter Plan (aktiv)</label>
+      <div class="grid2">
+        <select id="planSelect"></select>
+        <div class="grid2">
+          <button class="btn" id="loadSaved" type="button">Laden</button>
+          <button class="btn" id="deleteSaved" type="button">Löschen</button>
+        </div>
+      </div>
+      <div class="small">Auto-Save überschreibt den aktiven Plan nach erfolgreichem „Plan anwenden“ (wenn aktiviert).</div>
+    </div>
+
+    <div class="card">
+      <div class="grid2">
+        <div>
+          <label>Heute / Jetzt</label>
+          <button class="btn primary" id="nowBtn" type="button">Heute + aktuelle Runde setzen</button>
+          <div class="small" id="nowHint" style="margin-top:8px;"></div>
+        </div>
+        <div>
+          <label>Schicht (für „Jetzt“)</label>
+          <select id="shiftPreset">
+            <option value="early">Früh (06:30–14:29)</option>
+            <option value="late">Spät (14:30–22:29)</option>
+            <option value="night">Nacht (22:30–06:10)</option>
+          </select>
+          <div class="small" style="margin-top:8px;">In Pausen wird standardmäßig die <strong>nächste</strong> Runde gesetzt.</div>
+        </div>
+      </div>
+
+      <label>Plan einfügen (OCR oder Tabelle)</label>
+      <textarea id="table" placeholder="OCR:
+1 Airbag LISA 2 Bepl. Re. BESETZT ...
+
+Tabelle:
 1;Airbag;LISA"></textarea>
 
-  <div class="row">
-    <div>
-      <label for="rounds">Runden pro Tag</label>
-      <input id="rounds" type="number" min="1" max="12" value="4" />
-    </div>
-    <div>
-      <label for="autoApply">Automatik</label>
-      <select id="autoApply">
-        <option value="on" selected>Auto-Apply: EIN</option>
-        <option value="off">Auto-Apply: AUS</option>
-      </select>
-    </div>
-  </div>
+      <div class="grid2">
+        <div>
+          <label>Runden pro Tag</label>
+          <input id="rounds" type="number" min="1" max="12" value="4" />
+        </div>
+        <div>
+          <label>Auto-Apply</label>
+          <select id="autoApply">
+            <option value="on" selected>EIN</option>
+            <option value="off">AUS</option>
+          </select>
+        </div>
+      </div>
 
-  <div class="row">
-    <div>
-      <label for="autoSave">Auto-Save (aktiver Plan)</label>
-      <select id="autoSave">
-        <option value="on" selected>Auto-Save: EIN</option>
-        <option value="off">Auto-Save: AUS</option>
-      </select>
-    </div>
-    <div style="display:flex; align-items:flex-end;">
-      <button id="applyBtn">Plan anwenden (manuell)</button>
-    </div>
-  </div>
+      <div class="grid2">
+        <div>
+          <label>Auto-Save (aktiver Plan)</label>
+          <select id="autoSave">
+            <option value="on" selected>EIN</option>
+            <option value="off">AUS</option>
+          </select>
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+          <button class="btn" id="applyBtn" type="button">Plan anwenden (manuell)</button>
+        </div>
+      </div>
 
-  <div class="card">
-    <label for="planName">Speichern als (Name)</label>
-    <input id="planName" placeholder="z.B. Standardwoche / KW03 / Änderung Mittwoch" />
-    <div class="row" style="margin-top:10px;">
-      <button id="saveNew">Als neuen Plan speichern</button>
-      <button id="overwriteActive">Aktiven Plan überschreiben</button>
+      <div class="diagnostics" id="diagPills"></div>
     </div>
-    <div class="small" style="margin-top:8px;">
-      Tipp: Leg dir A/B-Pläne an (Standard / Änderung) und wechsle bei Bedarf mit „Laden“.
-    </div>
-  </div>
 
-  <div class="row">
-    <div>
-      <label for="employee">Mitarbeiter</label>
-      <select id="employee" disabled></select>
-    </div>
-    <div>
-      <label for="day">Tag</label>
-      <select id="day" disabled>
-        <option value="mo">Mo</option>
-        <option value="di">Di</option>
-        <option value="mi">Mi</option>
-        <option value="do">Do</option>
-        <option value="fr">Fr</option>
-        <option value="sa">Sa</option>
-        <option value="so">So</option>
-      </select>
-    </div>
-  </div>
+    <div class="card">
+      <div class="grid2">
+        <div>
+          <label>Mitarbeiter</label>
+          <select id="employee" disabled></select>
+          <div class="favbar" id="favbar"></div>
+        </div>
+        <div>
+          <label>Tag</label>
+          <select id="day" disabled>
+            <option value="mo">Mo</option><option value="di">Di</option><option value="mi">Mi</option>
+            <option value="do">Do</option><option value="fr">Fr</option><option value="sa">Sa</option><option value="so">So</option>
+          </select>
+          <label>Runde</label>
+          <select id="round" disabled></select>
+        </div>
+      </div>
 
-  <div class="row">
-    <div>
-      <label for="round">Runde</label>
-      <select id="round" disabled></select>
-    </div>
-    <div>
-      <label>&nbsp;</label>
-      <button id="queryBtn" disabled>Abfrage</button>
-    </div>
-  </div>
+      <div class="grid2">
+        <button class="btn primary" id="queryBtn" type="button" disabled>Abfrage</button>
+        <button class="btn" id="weekBtn" type="button" disabled>Wochenübersicht (Mo–Fr)</button>
+      </div>
 
-  <div class="row">
-    <div>
-      <button id="weekBtn" disabled>Wochenübersicht (Mo–Fr)</button>
+      <div class="grid2">
+        <button class="btn" id="clearBtn" type="button">Eingabe leeren</button>
+        <button class="btn" id="editFavBtn" type="button">Favoriten bearbeiten</button>
+      </div>
     </div>
-    <div>
-      <button id="clearBtn">Eingabe leeren</button>
-    </div>
-  </div>
 
-  <div id="result" class="card" style="display:none;"></div>
-  <div id="week" class="card" style="display:none;"></div>
+    <div id="result" class="card result hide"></div>
+    <div id="week" class="card hide"></div>
+
+    <div class="card planSaveCard">
+      <label>Plan speichern</label>
+      <input id="planName" placeholder="z.B. Standardwoche / Änderung Mittwoch" />
+      <div class="grid2" style="margin-top:10px;">
+        <button class="btn" id="saveNew" type="button">Als neuen Plan speichern</button>
+        <button class="btn" id="overwriteActive" type="button">Aktiven Plan überschreiben</button>
+      </div>
+      <div class="small">Tipp: Wenn sich mitten in der Woche was ändert, speichere eine zweite Version und lade sie bei Bedarf.</div>
+    </div>
+
+    <div class="card exportCard">
+      <label>Backup / Export</label>
+      <button class="btn" id="exportBtn" type="button">Export-Text erzeugen</button>
+      <textarea id="exportOut" class="mono" style="min-height:110px;" placeholder="Hier erscheint der Export-Text..."></textarea>
+      <div class="small">Export kannst du in Notizen sichern (Backup / Gerätewechsel).</div>
+    </div>
+
+  </div>
 
 <script>
   // ---------- constants ----------
   const DAY_ALIASES = { mo:0, di:1, mi:2, do:3, fr:4, sa:5, so:6 };
+  const DAY_KEYS = ["mo","di","mi","do","fr","sa","so"];
   const DAY_NAMES = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 
   // ---------- storage keys ----------
-  const STORAGE_KEY = "taktplan_saved_v2";       // { plans: {id:{name,text,rounds,updatedAt}}, activeId }
-  const LAST_DRAFT_KEY = "taktplan_last_draft_v2"; // { text, rounds, autoApply, autoSave }
-  const LAST_QUERY_KEY = "taktplan_last_query_v1"; // { employee, day, round }
+  const STORAGE_KEY = "taktplan_saved_v4";          // { plans: {id:{name,text,rounds,updatedAt}}, activeId }
+  const LAST_DRAFT_KEY = "taktplan_last_draft_v4";  // { text, rounds, autoApply, autoSave, shiftPreset }
+  const LAST_QUERY_KEY = "taktplan_last_query_v3";  // { employee, day, round }
+  const UI_KEY = "taktplan_ui_v2";                  // { theme: auto|dark|light, mode: full|compact }
+  const FAV_KEY = "taktplan_favs_v2";               // [ "LOUIS", "FLORIAN", ... ]
 
   // ---------- helpers ----------
-  function normName(s) { return (s || "").trim().replace(/\s+/g, " ").toUpperCase(); }
-  function nowISO() { return new Date().toISOString(); }
-  function uid() { return "p_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16); }
+  function normName(s){ return (s || "").trim().replace(/\s+/g," ").toUpperCase(); }
+  function nowISO(){ return new Date().toISOString(); }
+  function uid(){ return "p_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16); }
 
-  function loadState() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { plans: {}, activeId: null };
-      const parsed = JSON.parse(raw);
-      return { plans: parsed.plans || {}, activeId: parsed.activeId || null };
-    } catch { return { plans: {}, activeId: null }; }
+  function loadJSON(key, fallback){
+    try{
+      const raw = localStorage.getItem(key);
+      if(!raw) return fallback;
+      return JSON.parse(raw);
+    } catch { return fallback; }
   }
-  function saveState(state) { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function saveJSON(key, value){ localStorage.setItem(key, JSON.stringify(value)); }
 
-  function saveDraft() {
-    localStorage.setItem(LAST_DRAFT_KEY, JSON.stringify({
+  function loadState(){
+    const s = loadJSON(STORAGE_KEY, { plans:{}, activeId:null });
+    s.plans = s.plans || {};
+    s.activeId = s.activeId || null;
+    return s;
+  }
+  function saveState(state){ saveJSON(STORAGE_KEY, state); }
+
+  function saveDraft(){
+    saveJSON(LAST_DRAFT_KEY, {
       text: elTable.value,
       rounds: elRounds.value,
       autoApply: elAutoApply.value,
-      autoSave: elAutoSave.value
-    }));
+      autoSave: elAutoSave.value,
+      shiftPreset: elShift.value
+    });
   }
-  function loadDraft() {
-    try {
-      const raw = localStorage.getItem(LAST_DRAFT_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch { return null; }
+  function loadDraft(){ return loadJSON(LAST_DRAFT_KEY, null); }
+
+  function saveLastQuery(){
+    saveJSON(LAST_QUERY_KEY, { employee: elEmp.value, day: elDay.value, round: elRound.value });
+  }
+  function loadLastQuery(){ return loadJSON(LAST_QUERY_KEY, null); }
+
+  function setTheme(theme){
+    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full" });
+    ui.theme = theme;
+    saveJSON(UI_KEY, ui);
+
+    document.body.classList.remove("force-dark","force-light");
+    themeAuto.classList.toggle("active", theme==="auto");
+    themeDark.classList.toggle("active", theme==="dark");
+    themeLight.classList.toggle("active", theme==="light");
+
+    if(theme==="dark") document.body.classList.add("force-dark");
+    if(theme==="light") document.body.classList.add("force-light");
   }
 
-  function saveLastQuery() {
-    localStorage.setItem(LAST_QUERY_KEY, JSON.stringify({
-      employee: elEmp.value,
-      day: elDay.value,
-      round: elRound.value
-    }));
-  }
-  function loadLastQuery() {
-    try {
-      const raw = localStorage.getItem(LAST_QUERY_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch { return null; }
+  function setMode(mode){
+    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full" });
+    ui.mode = mode;
+    saveJSON(UI_KEY, ui);
+
+    modeFull.classList.toggle("active", mode==="full");
+    modeCompact.classList.toggle("active", mode==="compact");
+    document.body.classList.toggle("compact", mode==="compact");
   }
 
-  function showOk(html) {
-    elResult.style.display = "block";
-    elResult.className = "card ok";
+  function showResultOk(html){
+    elResult.classList.remove("hide","err");
+    elResult.classList.add("ok");
     elResult.innerHTML = html;
   }
-  function showErr(msg) {
-    elResult.style.display = "block";
-    elResult.className = "card err";
+  function showResultErr(msg){
+    elResult.classList.remove("hide","ok");
+    elResult.classList.add("err");
     elResult.innerHTML = `<div><strong>Fehler:</strong> ${msg}</div>`;
   }
-  function hideWeek() {
-    elWeek.style.display = "none";
-    elWeek.innerHTML = "";
-  }
+  function hideWeek(){ elWeek.classList.add("hide"); elWeek.innerHTML=""; }
 
-  function setEnabled(on) {
+  function fillRounds(n){
+    elRound.innerHTML = "";
+    for(let i=1;i<=n;i++){
+      const opt=document.createElement("option");
+      opt.value=String(i); opt.textContent=String(i);
+      elRound.appendChild(opt);
+    }
+  }
+  function setEnabled(on){
     elEmp.disabled = !on;
     elDay.disabled = !on;
     elRound.disabled = !on;
@@ -205,114 +409,89 @@ Tabellen-Beispiel:
     elWeekBtn.disabled = !on;
   }
 
-  function fillRounds(n) {
-    elRound.innerHTML = "";
-    for (let i = 1; i <= n; i++) {
-      const opt = document.createElement("option");
-      opt.value = String(i);
-      opt.textContent = String(i);
-      elRound.appendChild(opt);
-    }
-  }
+  // ---------- parsing (table + OCR single line) ----------
+  function parseTable(text){
+    const raw=(text||"").trim();
+    if(!raw) return [];
 
-  // ---------- parsing: supports table and OCR single-line ----------
-  function parseTable(text) {
-    const raw = (text || "").trim();
-    if (!raw) return [];
-
-    // If contains separators, treat as table mode
     const looksLikeTable = /[;\t,]/.test(raw);
 
-    // MODE A: table paste
-    if (looksLikeTable) {
-      const rows = [];
-      const lines = raw.split(/\r?\n/);
-      for (const line0 of lines) {
-        const line = line0.trim();
-        if (!line) continue;
+    if(looksLikeTable){
+      const rows=[];
+      const lines=raw.split(/\r?\n/);
+      for(const line0 of lines){
+        const line=line0.trim();
+        if(!line) continue;
+        const parts=line.split(/[\t;,]+/).map(x=>x.trim()).filter(Boolean);
+        if(parts.length<3) continue;
 
-        const parts = line.split(/[\t;,]+/).map(x => x.trim()).filter(Boolean);
-        if (parts.length < 3) continue;
-
-        let takt = null, idx = null;
-        for (let i = 0; i < Math.min(2, parts.length); i++) {
-          if (/^\d+$/.test(parts[i])) { takt = parseInt(parts[i], 10); idx = i; break; }
+        let takt=null, idx=null;
+        for(let i=0;i<Math.min(2, parts.length);i++){
+          if(/^\d+$/.test(parts[i])){ takt=parseInt(parts[i],10); idx=i; break; }
         }
-        if (takt === null) continue;
-        if (idx + 2 >= parts.length) continue;
+        if(takt===null) continue;
+        if(idx+2>=parts.length) continue;
 
-        rows.push({ takt, bezeichnung: parts[idx + 1], mitarbeiter: parts[idx + 2] });
+        rows.push({ takt, bezeichnung: parts[idx+1], mitarbeiter: parts[idx+2] });
       }
-      rows.sort((a,b) => a.takt - b.takt);
+      rows.sort((a,b)=>a.takt-b.takt);
       return rows;
     }
 
-    // MODE B: OCR single line
-    const cleaned = raw.replace(/\r?\n/g, " ").replace(/\s+/g, " ").trim();
-    const tokens = cleaned.split(" ").filter(Boolean);
+    const cleaned=raw.replace(/\r?\n/g," ").replace(/\s+/g," ").trim();
+    const tokens=cleaned.split(" ").filter(Boolean);
 
-    const segments = [];
-    let i = 0;
-    while (i < tokens.length) {
-      if (!/^\d+$/.test(tokens[i])) { i++; continue; }
-      const takt = parseInt(tokens[i], 10);
-      i++;
-
-      const content = [];
-      while (i < tokens.length && !/^\d+$/.test(tokens[i])) {
-        content.push(tokens[i]);
-        i++;
-      }
-      if (content.length >= 2) segments.push({ takt, content });
+    const segs=[];
+    let i=0;
+    while(i<tokens.length){
+      if(!/^\d+$/.test(tokens[i])){ i++; continue; }
+      const takt=parseInt(tokens[i],10); i++;
+      const content=[];
+      while(i<tokens.length && !/^\d+$/.test(tokens[i])){ content.push(tokens[i]); i++; }
+      if(content.length>=2) segs.push({ takt, content });
     }
 
-    const rows = segments.map(seg => {
-      const mitarbeiter = seg.content[seg.content.length - 1];
-      const bezeichnung = seg.content.slice(0, -1).join(" ").trim();
-      return { takt: seg.takt, bezeichnung, mitarbeiter };
+    const rows=segs.map(s=>{
+      const mitarbeiter=s.content[s.content.length-1];
+      const bezeichnung=s.content.slice(0,-1).join(" ").trim();
+      return { takt: s.takt, bezeichnung, mitarbeiter };
     });
-
-    rows.sort((a,b) => a.takt - b.takt);
+    rows.sort((a,b)=>a.takt-b.takt);
     return rows;
   }
 
   // ---------- plan logic ----------
-  class TaktPlan {
-    constructor(rows, roundsPerDay) {
-      if (!rows || rows.length === 0) throw new Error("Keine gültigen Zeilen erkannt. Prüfe das Format.");
-      this.rows = rows;
-      this.roundsPerDay = roundsPerDay;
+  class TaktPlan{
+    constructor(rows, roundsPerDay){
+      if(!rows || rows.length===0) throw new Error("Keine gültigen Zeilen erkannt.");
+      this.rows=rows;
+      this.roundsPerDay=roundsPerDay;
 
-      this.cycle = rows.filter(r => normName(r.mitarbeiter) !== "BESETZT");
-      if (this.cycle.length === 0) throw new Error("Alle Einträge sind BESETZT – kein Rotationszyklus möglich.");
+      this.cycle=rows.filter(r=>normName(r.mitarbeiter)!=="BESETZT");
+      if(this.cycle.length===0) throw new Error("Alle Einträge sind BESETZT – kein Rotationszyklus möglich.");
 
-      this.startIndex = new Map();
-      this.cycle.forEach((r, i) => {
-        const key = normName(r.mitarbeiter);
-        if (!this.startIndex.has(key)) this.startIndex.set(key, i);
+      this.startIndex=new Map();
+      this.cycle.forEach((r,i)=>{
+        const key=normName(r.mitarbeiter);
+        if(!this.startIndex.has(key)) this.startIndex.set(key,i);
       });
     }
-
-    assignment(employee, dayKey, roundNo) {
-      if (roundNo < 1 || roundNo > this.roundsPerDay) throw new Error(`Runde muss 1-${this.roundsPerDay} sein.`);
-      const empKey = normName(employee);
-      if (!this.startIndex.has(empKey)) throw new Error(`Mitarbeiter '${employee}' nicht im Plan gefunden.`);
-
-      const d = DAY_ALIASES[dayKey];
-      if (d === undefined) throw new Error("Unbekannter Tag.");
-
-      const steps = d * this.roundsPerDay + (roundNo - 1);
-      const start = this.startIndex.get(empKey);
-      const pos = (start + steps) % this.cycle.length;
+    assignment(employee, dayKey, roundNo){
+      if(roundNo<1 || roundNo>this.roundsPerDay) throw new Error(`Runde muss 1-${this.roundsPerDay} sein.`);
+      const empKey=normName(employee);
+      if(!this.startIndex.has(empKey)) throw new Error(`Mitarbeiter '${employee}' nicht im Plan gefunden.`);
+      const d=DAY_ALIASES[dayKey];
+      const steps=d*this.roundsPerDay + (roundNo-1);
+      const start=this.startIndex.get(empKey);
+      const pos=(start+steps)%this.cycle.length;
       return this.cycle[pos];
     }
-
-    weeklyOverview(employee, days=5) {
-      const out = [];
-      for (let d = 0; d < days; d++) {
-        for (let r = 1; r <= this.roundsPerDay; r++) {
-          const dayKey = Object.keys(DAY_ALIASES).find(k => DAY_ALIASES[k] === d);
-          const row = this.assignment(employee, dayKey, r);
+    weeklyOverview(employee, days=5){
+      const out=[];
+      for(let d=0; d<days; d++){
+        const dayKey = DAY_KEYS[d];
+        for(let r=1; r<=this.roundsPerDay; r++){
+          const row=this.assignment(employee, dayKey, r);
           out.push({ tag: DAY_NAMES[d], runde: r, station: row.bezeichnung, takt: row.takt });
         }
       }
@@ -320,37 +499,170 @@ Tabellen-Beispiel:
     }
   }
 
-  // ---------- diagnostics ----------
-  function diagnostics(rows) {
-    const takts = rows.map(r => r.takt);
-    const uniq = new Set(takts);
-    const dups = takts.filter((t, idx) => takts.indexOf(t) !== idx);
-    const min = Math.min(...takts);
-    const max = Math.max(...takts);
-
-    // missing in range (useful if plan is expected 1..18)
-    const missing = [];
-    for (let t = min; t <= max; t++) {
-      if (!uniq.has(t)) missing.push(t);
-    }
-
+  function diagnostics(rows){
+    const takts=rows.map(r=>r.takt);
+    const uniq=new Set(takts);
+    const dups=takts.filter((t,idx)=>takts.indexOf(t)!==idx);
+    const min=Math.min(...takts);
+    const max=Math.max(...takts);
+    const missing=[];
+    for(let t=min; t<=max; t++){ if(!uniq.has(t)) missing.push(t); }
     return { count: rows.length, uniq: uniq.size, min, max, dups: Array.from(new Set(dups)), missing };
   }
 
+  // ---------- "Heute / Jetzt" logic (fixed schedule, exact :30/:45 starts) ----------
+  function toMin(hh, mm){ return hh*60 + mm; }
+  function timeMinNow(){
+    const n = new Date();
+    return toMin(n.getHours(), n.getMinutes());
+  }
+  function inRangeHalfOpen(t, start, end){
+    // [start, end)
+    return t >= start && t < end;
+  }
+
+  function computeDayKeyNow(){
+    const now = new Date();
+    const js = now.getDay();          // 0=Sun..6=Sat
+    const dayIndex = (js + 6) % 7;    // Mon=0..Sun=6
+    return { dayIndex, dayKey: DAY_KEYS[dayIndex], dayName: DAY_NAMES[dayIndex] };
+  }
+
+  function detectShift(){
+    const t = timeMinNow();
+    const inEarly = inRangeHalfOpen(t, toMin(6,30), toMin(14,30));
+    const inLate  = inRangeHalfOpen(t, toMin(14,30), toMin(22,30));
+    const inNight = inRangeHalfOpen(t, toMin(22,30), toMin(24,0)) || inRangeHalfOpen(t, toMin(0,0), toMin(6,11));
+    if(inEarly) return "early";
+    if(inLate)  return "late";
+    if(inNight) return "night";
+    return elShift.value || "early";
+  }
+
+  function currentRoundByShift(shift){
+    const t = timeMinNow();
+
+    // In pauses, set next round (practical). Change to "last" if preferred.
+    const breakPolicy = "next"; // "next" | "last"
+
+    let schedule = [];
+
+    if(shift === "early"){
+      schedule = [
+        { kind:"work",  start: toMin(6,30),  end: toMin(8,15),  round:1 },
+        { kind:"break", start: toMin(8,15),  end: toMin(8,30),  next:2, last:1 },
+        { kind:"work",  start: toMin(8,30),  end: toMin(10,15), round:2 },
+        { kind:"break", start: toMin(10,15), end: toMin(10,45), next:3, last:2 },
+        { kind:"work",  start: toMin(10,45), end: toMin(12,30), round:3 },
+        { kind:"break", start: toMin(12,30), end: toMin(12,45), next:4, last:3 },
+        { kind:"work",  start: toMin(12,45), end: toMin(14,30), round:4 },
+      ];
+    }
+
+    if(shift === "late"){
+      schedule = [
+        { kind:"work",  start: toMin(14,30), end: toMin(16,15), round:1 },
+        { kind:"break", start: toMin(16,15), end: toMin(16,30), next:2, last:1 },
+        { kind:"work",  start: toMin(16,30), end: toMin(18,15), round:2 },
+        { kind:"break", start: toMin(18,15), end: toMin(18,45), next:3, last:2 },
+        { kind:"work",  start: toMin(18,45), end: toMin(20,30), round:3 },
+        { kind:"break", start: toMin(20,30), end: toMin(20,45), next:4, last:3 },
+        { kind:"work",  start: toMin(20,45), end: toMin(22,30), round:4 },
+      ];
+    }
+
+    if(shift === "night"){
+      // night spans 22:30..06:10 (end exclusive 06:11)
+      schedule = [
+        { kind:"work",  start: toMin(22,30), end: toMin(24,0),  round:1 },
+        { kind:"work",  start: toMin(0,0),   end: toMin(0,15),  round:1 },
+        { kind:"break", start: toMin(0,15),  end: toMin(0,30),  next:2, last:1 },
+        { kind:"work",  start: toMin(0,30),  end: toMin(2,15),  round:2 },
+        { kind:"break", start: toMin(2,15),  end: toMin(2,45),  next:3, last:2 },
+        { kind:"work",  start: toMin(2,45),  end: toMin(4,30),  round:3 },
+        { kind:"break", start: toMin(4,30),  end: toMin(4,45),  next:4, last:3 },
+        { kind:"work",  start: toMin(4,45),  end: toMin(6,11),  round:4 },
+      ];
+    }
+
+    for(const e of schedule){
+      if(inRangeHalfOpen(t, e.start, e.end)){
+        if(e.kind === "work"){
+          return { kind:"work", round:e.round, label:`Runde ${e.round}` };
+        }
+        if(e.kind === "break"){
+          const r = (breakPolicy === "next") ? e.next : e.last;
+          return { kind:"break", round:r, label:`Pause (setzt ${breakPolicy==="next" ? "nächste" : "letzte"} Runde: ${r})` };
+        }
+      }
+    }
+
+    return { kind:"out", round:null, label:"Außerhalb Schichtzeit" };
+  }
+
+  function setTodayAndNow(){
+    const { dayIndex, dayKey, dayName } = computeDayKeyNow();
+
+    // Detect shift from clock (more reliable than manual selection)
+    const shift = detectShift();
+    elShift.value = shift;
+
+    const info = currentRoundByShift(shift);
+
+    elDay.value = dayKey;
+    if(info.round) elRound.value = String(info.round);
+
+    const shiftName = (shift==="early") ? "Früh" : (shift==="late" ? "Spät" : "Nacht");
+    nowHint.textContent = `Heute: ${dayName} • Schicht: ${shiftName} • ${info.label}`;
+
+    saveLastQuery();
+  }
+
+  // ---------- favorites ----------
+  function loadFavs(){ return loadJSON(FAV_KEY, []); }
+  function saveFavs(favs){ saveJSON(FAV_KEY, favs); }
+
+  function renderFavbar(){
+    const favs = loadFavs();
+    favbar.innerHTML = "";
+    if(!favs.length) return;
+
+    favs.forEach(name=>{
+      const btn=document.createElement("button");
+      btn.type="button";
+      btn.textContent=name;
+      btn.addEventListener("click", ()=>{
+        const target = Array.from(elEmp.options).find(o => normName(o.value)===normName(name));
+        if(target){
+          elEmp.value = target.value;
+          saveLastQuery();
+          hideWeek();
+        }
+      });
+      favbar.appendChild(btn);
+    });
+  }
+
+  function editFavs(){
+    const current = loadFavs().join(", ");
+    const input = prompt("Favoriten (kommagetrennt), z.B. LOUIS, FLORIAN, JUSTIN", current);
+    if(input===null) return;
+    const favs = input.split(",").map(s=>s.trim()).filter(Boolean);
+    saveFavs(favs);
+    renderFavbar();
+  }
+
   // ---------- UI elements ----------
+  const elPlanSelect = document.getElementById("planSelect");
+  const elLoadSaved = document.getElementById("loadSaved");
+  const elDeleteSaved = document.getElementById("deleteSaved");
+
   const elTable = document.getElementById("table");
   const elRounds = document.getElementById("rounds");
   const elAutoApply = document.getElementById("autoApply");
   const elAutoSave = document.getElementById("autoSave");
   const elApplyBtn = document.getElementById("applyBtn");
-
-  const elPlanSelect = document.getElementById("planSelect");
-  const elLoadSaved = document.getElementById("loadSaved");
-  const elDeleteSaved = document.getElementById("deleteSaved");
-
-  const elPlanName = document.getElementById("planName");
-  const elSaveNew = document.getElementById("saveNew");
-  const elOverwriteActive = document.getElementById("overwriteActive");
+  const elShift = document.getElementById("shiftPreset");
 
   const elEmp = document.getElementById("employee");
   const elDay = document.getElementById("day");
@@ -361,35 +673,69 @@ Tabellen-Beispiel:
 
   const elResult = document.getElementById("result");
   const elWeek = document.getElementById("week");
+  const elPlanName = document.getElementById("planName");
+  const elSaveNew = document.getElementById("saveNew");
+  const elOverwriteActive = document.getElementById("overwriteActive");
+
+  const elExportBtn = document.getElementById("exportBtn");
+  const elExportOut = document.getElementById("exportOut");
+
+  const diagPills = document.getElementById("diagPills");
+  const nowBtn = document.getElementById("nowBtn");
+  const nowHint = document.getElementById("nowHint");
+  const editFavBtn = document.getElementById("editFavBtn");
+  const favbar = document.getElementById("favbar");
+
+  const themeAuto = document.getElementById("themeAuto");
+  const themeDark = document.getElementById("themeDark");
+  const themeLight = document.getElementById("themeLight");
+  const modeFull = document.getElementById("modeFull");
+  const modeCompact = document.getElementById("modeCompact");
 
   let plan = null;
   let applyTimer = null;
 
-  function refreshPlanSelect() {
+  function refreshPlanSelect(){
     const state = loadState();
     const entries = Object.entries(state.plans)
-      .map(([id, p]) => ({ id, ...p }))
-      .sort((a,b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+      .map(([id,p])=>({id, ...p}))
+      .sort((a,b)=>(b.updatedAt||"").localeCompare(a.updatedAt||""));
 
-    elPlanSelect.innerHTML = "";
-    const opt0 = document.createElement("option");
-    opt0.value = "";
-    opt0.textContent = "— keinen auswählen —";
+    elPlanSelect.innerHTML="";
+    const opt0=document.createElement("option");
+    opt0.value=""; opt0.textContent="— keinen auswählen —";
     elPlanSelect.appendChild(opt0);
 
-    for (const p of entries) {
-      const opt = document.createElement("option");
-      opt.value = p.id;
+    for(const p of entries){
+      const opt=document.createElement("option");
+      opt.value=p.id;
       const stamp = p.updatedAt ? p.updatedAt.slice(0,16).replace("T"," ") : "";
-      opt.textContent = `${p.name} (${stamp})`;
+      opt.textContent=`${p.name} (${stamp})`;
       elPlanSelect.appendChild(opt);
     }
     elPlanSelect.value = state.activeId || "";
   }
 
-  function applyPlan({silent=false} = {}) {
+  function renderDiagnostics(diag, roundsPerDay){
+    const state = loadState();
+    const active = state.activeId ? "Aktiv-Plan: JA" : "Aktiv-Plan: NEIN";
+    const warn = [];
+    if(diag.dups.length) warn.push(`Doppelt: ${diag.dups.join(", ")}`);
+    if(diag.missing.length) warn.push(`Fehlt: ${diag.missing.join(", ")}`);
+
+    const pills = [];
+    pills.push(`<span class="pill">Erkannt: <strong>${diag.count}</strong></span>`);
+    pills.push(`<span class="pill">Zyklus: <strong>${plan ? plan.cycle.length : "-"}</strong></span>`);
+    pills.push(`<span class="pill">Runden/Tag: <strong>${roundsPerDay}</strong></span>`);
+    pills.push(`<span class="pill">${active}</span>`);
+    if(warn.length) pills.push(`<span class="pill">Hinweis: <strong>${warn.join(" • ")}</strong></span>`);
+
+    diagPills.innerHTML = pills.join("");
+  }
+
+  function applyPlan({silent=false} = {}){
     const text = elTable.value;
-    const rpd = parseInt(elRounds.value, 10) || 4;
+    const rpd = parseInt(elRounds.value,10) || 4;
     hideWeek();
 
     const rows = parseTable(text);
@@ -397,100 +743,119 @@ Tabellen-Beispiel:
 
     plan = new TaktPlan(rows, rpd);
 
-    // fill employees
-    const names = Array.from(new Set(plan.cycle.map(r => r.mitarbeiter.trim())))
-      .sort((a,b) => normName(a).localeCompare(normName(b)));
+    const names = Array.from(new Set(plan.cycle.map(r=>r.mitarbeiter.trim())))
+      .sort((a,b)=>normName(a).localeCompare(normName(b)));
 
-    elEmp.innerHTML = "";
-    for (const name of names) {
-      const opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
+    elEmp.innerHTML="";
+    for(const name of names){
+      const opt=document.createElement("option");
+      opt.value=name; opt.textContent=name;
       elEmp.appendChild(opt);
     }
-
     fillRounds(rpd);
     setEnabled(true);
 
-    // restore last query if possible
     const last = loadLastQuery();
-    if (last) {
-      if (names.includes(last.employee)) elEmp.value = last.employee;
-      if (last.day) elDay.value = last.day;
-      if (last.round) elRound.value = last.round;
+    if(last){
+      const target = names.find(n=>normName(n)===normName(last.employee));
+      if(target) elEmp.value = target;
+      if(last.day) elDay.value = last.day;
+      if(last.round) elRound.value = last.round;
     }
 
+    // Auto-save active plan after successful apply
     const state = loadState();
     const activeId = state.activeId;
-
-    // Auto-save active plan after successful apply
-    if (elAutoSave.value === "on" && activeId && state.plans[activeId]) {
+    if(elAutoSave.value==="on" && activeId && state.plans[activeId]){
       state.plans[activeId] = { ...state.plans[activeId], text, rounds: rpd, updatedAt: nowISO() };
       saveState(state);
       refreshPlanSelect();
     }
 
-    if (!silent) {
-      const warnBits = [];
-      if (diag.dups.length) warnBits.push(`Doppelte Takte: ${diag.dups.join(", ")}`);
-      if (diag.missing.length) warnBits.push(`Fehlende Takte (${diag.min}–${diag.max}): ${diag.missing.join(", ")}`);
+    renderFavbar();
+    renderDiagnostics(diag, rpd);
 
-      showOk(`
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-          <span class="pill">Erkannt: <strong>${diag.count}</strong></span>
-          <span class="pill">Zyklus ohne BESETZT: <strong>${plan.cycle.length}</strong></span>
-          <span class="pill">Runden/Tag: <strong>${rpd}</strong></span>
-          ${activeId ? `<span class="pill">Aktiv: <strong>Auto-Save ${elAutoSave.value === "on" ? "EIN" : "AUS"}</strong></span>` : `<span class="pill">Kein aktiver Plan ausgewählt</span>`}
-        </div>
-        ${warnBits.length ? `<div style="margin-top:10px;"><strong>Hinweise:</strong><br>${warnBits.join("<br>")}</div>` : ``}
-      `);
+    if(!silent){
+      showResultOk(`Plan angewendet. Du kannst jetzt abfragen oder „Heute/Jetzt“ nutzen.`);
     }
   }
 
-  function scheduleAutoApply() {
-    if (elAutoApply.value !== "on") return;
-    if (applyTimer) clearTimeout(applyTimer);
-    applyTimer = setTimeout(() => {
-      try {
-        if (!elTable.value.trim()) return;
+  function scheduleAutoApply(){
+    if(elAutoApply.value!=="on") return;
+    if(applyTimer) clearTimeout(applyTimer);
+    applyTimer = setTimeout(()=>{
+      try{
+        if(!elTable.value.trim()) return;
         applyPlan({silent:true});
-      } catch (e) {
-        // keep quiet on auto, but enable manual diagnosis:
-        // do nothing here; user can hit "Plan anwenden" to see error
+      } catch(e){
+        // silent on auto-apply
       }
     }, 600);
   }
 
+  // ---------- persistence ----------
+  function saveUI(){
+    // already persisted in setTheme / setMode, but keep helper if needed
+  }
+
   // ---------- init ----------
-  (function init() {
+  (function init(){
+    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full" });
+    setTheme(ui.theme || "auto");
+    setMode(ui.mode || "full");
+
     const draft = loadDraft();
-    if (draft) {
-      if (draft.text) elTable.value = draft.text;
-      if (draft.rounds) elRounds.value = draft.rounds;
-      if (draft.autoApply) elAutoApply.value = draft.autoApply;
-      if (draft.autoSave) elAutoSave.value = draft.autoSave;
+    if(draft){
+      if(draft.text) elTable.value = draft.text;
+      if(draft.rounds) elRounds.value = draft.rounds;
+      if(draft.autoApply) elAutoApply.value = draft.autoApply;
+      if(draft.autoSave) elAutoSave.value = draft.autoSave;
+      if(draft.shiftPreset) elShift.value = draft.shiftPreset;
     }
+
     refreshPlanSelect();
     setEnabled(false);
+    renderFavbar();
+
+    // Helpful hint
+    const detected = detectShift();
+    const shiftName = detected==="early" ? "Früh" : (detected==="late" ? "Spät" : "Nacht");
+    nowHint.textContent = `Schicht-Erkennung: ${shiftName}. Tippe „Heute/Jetzt“, um Tag + Runde zu setzen.`;
   })();
 
   // ---------- events ----------
-  elTable.addEventListener("input", () => { saveDraft(); scheduleAutoApply(); });
-  elRounds.addEventListener("input", () => { saveDraft(); scheduleAutoApply(); });
-  elAutoApply.addEventListener("change", () => saveDraft());
-  elAutoSave.addEventListener("change", () => saveDraft());
+  themeAuto.addEventListener("click", ()=>setTheme("auto"));
+  themeDark.addEventListener("click", ()=>setTheme("dark"));
+  themeLight.addEventListener("click", ()=>setTheme("light"));
+  modeFull.addEventListener("click", ()=>setMode("full"));
+  modeCompact.addEventListener("click", ()=>setMode("compact"));
 
-  elApplyBtn.addEventListener("click", () => {
-    try { applyPlan({silent:false}); }
-    catch (e) { plan = null; setEnabled(false); showErr(e.message || String(e)); }
+  elTable.addEventListener("input", ()=>{ saveDraft(); scheduleAutoApply(); });
+  [elRounds, elAutoApply, elAutoSave, elShift].forEach(el=>{
+    el.addEventListener("input", ()=>{ saveDraft(); scheduleAutoApply(); });
+    el.addEventListener("change", ()=>{ saveDraft(); scheduleAutoApply(); });
   });
 
-  elQuery.addEventListener("click", () => {
-    try {
-      if (!plan) throw new Error("Bitte erst den Plan anwenden (oder Auto-Apply nutzen).");
+  elApplyBtn.addEventListener("click", ()=>{
+    try{ applyPlan({silent:false}); }
+    catch(e){ plan=null; setEnabled(false); showResultErr(e.message || String(e)); }
+  });
+
+  nowBtn.addEventListener("click", ()=>{
+    try{
+      setTodayAndNow();
+      showResultOk("Heute/Jetzt gesetzt. Tag und Runde sind vorausgewählt.");
+    } catch(e){
+      showResultErr(e.message || String(e));
+    }
+  });
+
+  elQuery.addEventListener("click", ()=>{
+    try{
+      if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
       const employee = elEmp.value;
       const dayKey = elDay.value;
-      const roundNo = parseInt(elRound.value, 10);
+      const roundNo = parseInt(elRound.value,10);
 
       const row = plan.assignment(employee, dayKey, roundNo);
       const dayName = DAY_NAMES[DAY_ALIASES[dayKey]];
@@ -498,141 +863,150 @@ Tabellen-Beispiel:
       saveLastQuery();
       hideWeek();
 
-      showOk(`
-        <div><strong>${employee}</strong> hat <strong>${dayName}</strong>, Runde <strong>${roundNo}</strong>:</div>
-        <div style="font-size:18px; margin-top:6px;"><strong>${row.bezeichnung}</strong></div>
-        <div class="mono" style="margin-top:6px;">Takt ${row.takt}</div>
+      showResultOk(`
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <span class="pill"><strong>${employee}</strong></span>
+          <span class="pill">${dayName}</span>
+          <span class="pill">Runde <strong>${roundNo}</strong></span>
+        </div>
+        <div style="font-size:22px; font-weight:900; margin-top:10px;">${row.bezeichnung}</div>
+        <div class="mono" style="margin-top:8px; color: var(--muted);">Takt ${row.takt}</div>
       `);
-    } catch (e) {
-      showErr(e.message || String(e));
+    } catch(e){
+      showResultErr(e.message || String(e));
     }
   });
 
-  elWeekBtn.addEventListener("click", () => {
-    try {
-      if (!plan) throw new Error("Bitte erst den Plan anwenden (oder Auto-Apply nutzen).");
+  elWeekBtn.addEventListener("click", ()=>{
+    try{
+      if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
       const employee = elEmp.value;
-
       const data = plan.weeklyOverview(employee, 5);
       saveLastQuery();
 
-      elWeek.style.display = "block";
-      elWeek.className = "card";
+      elWeek.classList.remove("hide");
       elWeek.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div><strong>Wochenübersicht (Mo–Fr): ${employee}</strong></div>
+          <div style="font-weight:900;">Wochenübersicht (Mo–Fr): ${employee}</div>
           <div class="small">Runden/Tag: ${plan.roundsPerDay}</div>
         </div>
         <table>
           <thead><tr><th>Tag</th><th>Runde</th><th>Station</th><th>Takt</th></tr></thead>
           <tbody>
-            ${data.map(r => `<tr><td>${r.tag}</td><td>${r.runde}</td><td>${r.station}</td><td>${r.takt}</td></tr>`).join("")}
+            ${data.map(r=>`<tr><td>${r.tag}</td><td>${r.runde}</td><td>${r.station}</td><td class="mono">${r.takt}</td></tr>`).join("")}
           </tbody>
         </table>
       `;
-    } catch (e) {
-      showErr(e.message || String(e));
+    } catch(e){
+      showResultErr(e.message || String(e));
     }
   });
 
-  elClear.addEventListener("click", () => {
-    elTable.value = "";
+  elClear.addEventListener("click", ()=>{
+    elTable.value="";
     saveDraft();
-    plan = null;
+    plan=null;
     setEnabled(false);
     hideWeek();
-    showOk("Eingabe geleert.");
+    diagPills.innerHTML="";
+    showResultOk("Eingabe geleert.");
   });
 
-  elSaveNew.addEventListener("click", () => {
-    try {
-      const name = (elPlanName.value || "").trim();
-      if (!name) throw new Error("Bitte einen Namen eingeben (z.B. 'Standardwoche').");
+  editFavBtn.addEventListener("click", editFavs);
 
-      const text = elTable.value;
-      const rounds = parseInt(elRounds.value, 10) || 4;
-      if (!text.trim()) throw new Error("Plan-Text ist leer.");
+  // ---------- save/load plans ----------
+  elSaveNew.addEventListener("click", ()=>{
+    try{
+      const name=(elPlanName.value||"").trim();
+      if(!name) throw new Error("Bitte einen Namen eingeben (z.B. 'Standardwoche').");
+      const text=elTable.value;
+      const rounds=parseInt(elRounds.value,10) || 4;
+      if(!text.trim()) throw new Error("Plan-Text ist leer.");
 
-      // validate
-      const rows = parseTable(text);
+      const rows=parseTable(text);
       new TaktPlan(rows, rounds);
 
-      const state = loadState();
-      const id = uid();
-      state.plans[id] = { name, text, rounds, updatedAt: nowISO() };
-      state.activeId = id;
+      const state=loadState();
+      const id=uid();
+      state.plans[id]={ name, text, rounds, updatedAt: nowISO() };
+      state.activeId=id;
       saveState(state);
       refreshPlanSelect();
 
-      showOk(`Als neuer Plan gespeichert und aktiviert: <strong>${name}</strong>`);
-    } catch (e) {
-      showErr(e.message || String(e));
-    }
+      showResultOk(`Gespeichert und aktiviert: <strong>${name}</strong>`);
+    } catch(e){ showResultErr(e.message || String(e)); }
   });
 
-  elOverwriteActive.addEventListener("click", () => {
-    try {
-      const state = loadState();
-      const id = state.activeId;
-      if (!id || !state.plans[id]) throw new Error("Kein aktiver Plan ausgewählt.");
+  elOverwriteActive.addEventListener("click", ()=>{
+    try{
+      const state=loadState();
+      const id=state.activeId;
+      if(!id || !state.plans[id]) throw new Error("Kein aktiver Plan ausgewählt.");
+      const text=elTable.value;
+      const rounds=parseInt(elRounds.value,10) || 4;
+      if(!text.trim()) throw new Error("Plan-Text ist leer.");
 
-      const text = elTable.value;
-      const rounds = parseInt(elRounds.value, 10) || 4;
-      if (!text.trim()) throw new Error("Plan-Text ist leer.");
-
-      // validate
-      const rows = parseTable(text);
+      const rows=parseTable(text);
       new TaktPlan(rows, rounds);
 
-      state.plans[id] = { ...state.plans[id], text, rounds, updatedAt: nowISO() };
+      state.plans[id]={ ...state.plans[id], text, rounds, updatedAt: nowISO() };
       saveState(state);
       refreshPlanSelect();
 
-      showOk(`Aktiver Plan überschrieben: <strong>${state.plans[id].name}</strong>`);
-    } catch (e) {
-      showErr(e.message || String(e));
-    }
+      showResultOk(`Aktiver Plan überschrieben: <strong>${state.plans[id].name}</strong>`);
+    } catch(e){ showResultErr(e.message || String(e)); }
   });
 
-  elLoadSaved.addEventListener("click", () => {
-    try {
-      const state = loadState();
-      const id = elPlanSelect.value;
-      if (!id || !state.plans[id]) throw new Error("Kein gespeicherter Plan ausgewählt.");
+  elLoadSaved.addEventListener("click", ()=>{
+    try{
+      const state=loadState();
+      const id=elPlanSelect.value;
+      if(!id || !state.plans[id]) throw new Error("Kein gespeicherter Plan ausgewählt.");
+      const p=state.plans[id];
 
-      const p = state.plans[id];
-      elTable.value = p.text || "";
-      elRounds.value = p.rounds || 4;
+      elTable.value=p.text || "";
+      elRounds.value=p.rounds || 4;
+      elShift.value = elShift.value || "early";
       saveDraft();
 
-      state.activeId = id;
+      state.activeId=id;
       saveState(state);
       refreshPlanSelect();
 
       applyPlan({silent:false});
-      showOk(`Plan geladen & angewendet: <strong>${p.name}</strong>`);
-    } catch (e) {
-      showErr(e.message || String(e));
-    }
+      showResultOk(`Plan geladen & angewendet: <strong>${p.name}</strong>`);
+    } catch(e){ showResultErr(e.message || String(e)); }
   });
 
-  elDeleteSaved.addEventListener("click", () => {
-    try {
-      const state = loadState();
-      const id = elPlanSelect.value;
-      if (!id || !state.plans[id]) throw new Error("Kein gespeicherter Plan ausgewählt.");
-      const name = state.plans[id].name || id;
+  elDeleteSaved.addEventListener("click", ()=>{
+    try{
+      const state=loadState();
+      const id=elPlanSelect.value;
+      if(!id || !state.plans[id]) throw new Error("Kein gespeicherter Plan ausgewählt.");
+      const name=state.plans[id].name || id;
 
       delete state.plans[id];
-      if (state.activeId === id) state.activeId = null;
+      if(state.activeId===id) state.activeId=null;
       saveState(state);
       refreshPlanSelect();
 
-      showOk(`Plan gelöscht: <strong>${name}</strong>`);
-    } catch (e) {
-      showErr(e.message || String(e));
-    }
+      showResultOk(`Plan gelöscht: <strong>${name}</strong>`);
+    } catch(e){ showResultErr(e.message || String(e)); }
   });
+
+  // ---------- export ----------
+  elExportBtn.addEventListener("click", ()=>{
+    try{
+      elExportOut.value = JSON.stringify(loadState(), null, 2);
+      showResultOk("Export erzeugt. Kopieren und z.B. in Notizen sichern.");
+    } catch(e){ showResultErr(e.message || String(e)); }
+  });
+
+  // ---------- save last query when changed ----------
+  [elEmp, elDay, elRound].forEach(el=>{
+    el.addEventListener("change", ()=>saveLastQuery());
+  });
+
 </script>
 </body>
 </html>
