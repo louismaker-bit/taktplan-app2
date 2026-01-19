@@ -85,12 +85,18 @@
       box-shadow: var(--shadow);
     }
     .seg button{
-      height: 38px; min-width: 84px;
-      border: 0; background: transparent; color: var(--muted);
-      padding: 0 12px; font-weight: 800;
+      height: 36px;
+      min-width: 60px;        /* <<< passt perfekt auf iPhone 14 Pro */
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 0 10px;
+      font-weight: 800;
     }
     .seg button.active{ color: var(--text); background: rgba(125,211,252,.14); }
-
+    .seg{
+      flex: 0 0 auto;
+    }
     .card{
       border: 1px solid var(--border);
       border-radius: var(--radius);
@@ -1017,4 +1023,5 @@ Tabelle:
 </script>
 </body>
 </html>
+
 
