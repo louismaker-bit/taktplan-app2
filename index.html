@@ -36,11 +36,6 @@
         --shadow: 0 10px 30px rgba(0,0,0,.10);
       }
     }
-    @media (max-width: 430px){
-      .topbar-inner{
-        justify-content: space-between;
-      }
-    }
     html, body { height: 100%; }
     body{
       margin: 0;
@@ -53,6 +48,7 @@
       padding-bottom: 28px;
     }
 
+    /* Forced themes */
     body.force-dark{
       --bg:#0b0c10; --card:rgba(255,255,255,.06); --card2:rgba(255,255,255,.08);
       --text:rgba(255,255,255,.92); --muted:rgba(255,255,255,.62); --border:rgba(255,255,255,.14);
@@ -64,7 +60,8 @@
       --accent:#0284c7; --ok:rgba(34,197,94,.14); --err:rgba(239,68,68,.12); --shadow:0 10px 30px rgba(0,0,0,.10);
     }
 
-    .wrap{ max-width: 820px; margin: 0 auto; padding: 14px; padding-top: 74px; }
+    .wrap{ max-width: 820px; margin: 0 auto; padding: 14px; padding-top: 88px; }
+
     .topbar{
       position: fixed; left: 0; right: 0; top: 0;
       padding: 12px 14px calc(12px + env(safe-area-inset-top));
@@ -73,25 +70,33 @@
       border-bottom: 1px solid var(--border);
       z-index: 50;
     }
+
+    /* iPhone 14 Pro fix: allow wrapping so buttons aren't cut off */
     .topbar-inner{
       max-width: 820px;
       margin: 0 auto;
-      display: flex;
+      display:flex;
       gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;        /* <<< Umbruch erlaubt */
+      align-items:center;
+      flex-wrap: wrap;
     }
+
     .title{ font-weight: 900; letter-spacing: .2px; }
     .sub{ font-size: 12px; color: var(--muted); margin-top: 2px; }
     .grow{ flex: 1; }
+
     .seg{
-      display:flex; border: 1px solid var(--border); border-radius: 999px; overflow:hidden;
+      display:flex;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      overflow:hidden;
       background: var(--card);
       box-shadow: var(--shadow);
+      flex: 0 0 auto;
     }
     .seg button{
       height: 36px;
-      min-width: 60px;        /* <<< passt perfekt auf iPhone 14 Pro */
+      min-width: 60px;            /* smaller for portrait */
       border: 0;
       background: transparent;
       color: var(--muted);
@@ -99,9 +104,7 @@
       font-weight: 800;
     }
     .seg button.active{ color: var(--text); background: rgba(125,211,252,.14); }
-    .seg{
-      flex: 0 0 auto;
-    }
+
     .card{
       border: 1px solid var(--border);
       border-radius: var(--radius);
@@ -180,7 +183,7 @@
     body.compact .planSaveCard,
     body.compact .exportCard { display:none !important; }
     body.compact textarea{ min-height: 96px; }
-    body.compact .wrap{ padding-top: 68px; }
+    body.compact .wrap{ padding-top: 84px; }
   </style>
 </head>
 
@@ -192,14 +195,21 @@
         <div class="sub">Offline • Favoriten • Heute/Jetzt</div>
       </div>
       <div class="grow"></div>
+
       <div class="seg" aria-label="Theme">
         <button id="themeAuto" class="active" type="button">Auto</button>
         <button id="themeDark" type="button">Dark</button>
         <button id="themeLight" type="button">Light</button>
       </div>
+
       <div class="seg" aria-label="Mode">
         <button id="modeFull" class="active" type="button">Full</button>
         <button id="modeCompact" type="button">Kompakt</button>
+      </div>
+
+      <div class="seg" aria-label="Haptik">
+        <button id="haptOn" class="active" type="button">Haptik</button>
+        <button id="haptOff" type="button">Aus</button>
       </div>
     </div>
   </div>
@@ -232,7 +242,7 @@
             <option value="late">Spät (14:30–22:29)</option>
             <option value="night">Nacht (22:30–06:10)</option>
           </select>
-          <div class="small" style="margin-top:8px;">In Pausen wird standardmäßig die <strong>nächste</strong> Runde gesetzt.</div>
+          <div class="small" style="margin-top:8px;">In Pausen setzt „Heute/Jetzt“ automatisch die <strong>nächste</strong> Runde.</div>
         </div>
       </div>
 
@@ -331,10 +341,10 @@ Tabelle:
   const DAY_NAMES = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 
   // ---------- storage keys ----------
-  const STORAGE_KEY = "taktplan_saved_v4";          // { plans: {id:{name,text,rounds,updatedAt}}, activeId }
-  const LAST_DRAFT_KEY = "taktplan_last_draft_v4";  // { text, rounds, autoApply, autoSave, shiftPreset }
-  const LAST_QUERY_KEY = "taktplan_last_query_v3";  // { employee, day, round }
-  const UI_KEY = "taktplan_ui_v2";                  // { theme: auto|dark|light, mode: full|compact }
+  const STORAGE_KEY = "taktplan_saved_v5";          // { plans: {id:{name,text,rounds,updatedAt}}, activeId }
+  const LAST_DRAFT_KEY = "taktplan_last_draft_v5";  // { text, rounds, autoApply, autoSave, shiftPreset }
+  const LAST_QUERY_KEY = "taktplan_last_query_v4";  // { employee, day, round }
+  const UI_KEY = "taktplan_ui_v3";                  // { theme: auto|dark|light, mode: full|compact, haptics: on|off }
   const FAV_KEY = "taktplan_favs_v2";               // [ "LOUIS", "FLORIAN", ... ]
 
   // ---------- helpers ----------
@@ -376,7 +386,7 @@ Tabelle:
   function loadLastQuery(){ return loadJSON(LAST_QUERY_KEY, null); }
 
   function setTheme(theme){
-    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full" });
+    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full", haptics:"on" });
     ui.theme = theme;
     saveJSON(UI_KEY, ui);
 
@@ -390,7 +400,7 @@ Tabelle:
   }
 
   function setMode(mode){
-    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full" });
+    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full", haptics:"on" });
     ui.mode = mode;
     saveJSON(UI_KEY, ui);
 
@@ -399,12 +409,39 @@ Tabelle:
     document.body.classList.toggle("compact", mode==="compact");
   }
 
+  function setHaptics(v){
+    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full", haptics:"on" });
+    ui.haptics = v;
+    saveJSON(UI_KEY, ui);
+
+    haptOn.classList.toggle("active", v==="on");
+    haptOff.classList.toggle("active", v==="off");
+  }
+
+  function canVibrate(){
+    return typeof navigator !== "undefined" && "vibrate" in navigator;
+  }
+
+  // iOS may smooth patterns; still useful feedback.
+  function haptic(kind){
+    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full", haptics:"on" });
+    if(ui.haptics === "off") return;
+    if(!canVibrate()) return;
+
+    if(kind === "tap") navigator.vibrate(10);
+    else if(kind === "ok") navigator.vibrate([12, 20, 12]);
+    else if(kind === "warn") navigator.vibrate([18, 30, 18]);
+    else if(kind === "err") navigator.vibrate([30, 40, 30]);
+  }
+
   function showResultOk(html){
+    haptic("ok");
     elResult.classList.remove("hide","err");
     elResult.classList.add("ok");
     elResult.innerHTML = html;
   }
   function showResultErr(msg){
+    haptic("err");
     elResult.classList.remove("hide","ok");
     elResult.classList.add("err");
     elResult.innerHTML = `<div><strong>Fehler:</strong> ${msg}</div>`;
@@ -535,8 +572,7 @@ Tabelle:
     return toMin(n.getHours(), n.getMinutes());
   }
   function inRangeHalfOpen(t, start, end){
-    // [start, end)
-    return t >= start && t < end;
+    return t >= start && t < end; // [start, end)
   }
 
   function computeDayKeyNow(){
@@ -559,9 +595,7 @@ Tabelle:
 
   function currentRoundByShift(shift){
     const t = timeMinNow();
-
-    // In pauses, set next round (practical). Change to "last" if preferred.
-    const breakPolicy = "next"; // "next" | "last"
+    const breakPolicy = "next"; // fixed per your request
 
     let schedule = [];
 
@@ -590,7 +624,6 @@ Tabelle:
     }
 
     if(shift === "night"){
-      // night spans 22:30..06:10 (end exclusive 06:11)
       schedule = [
         { kind:"work",  start: toMin(22,30), end: toMin(24,0),  round:1 },
         { kind:"work",  start: toMin(0,0),   end: toMin(0,15),  round:1 },
@@ -610,7 +643,7 @@ Tabelle:
         }
         if(e.kind === "break"){
           const r = (breakPolicy === "next") ? e.next : e.last;
-          return { kind:"break", round:r, label:`Pause (setzt ${breakPolicy==="next" ? "nächste" : "letzte"} Runde: ${r})` };
+          return { kind:"break", round:r, label:`Pause (setzt nächste Runde: ${r})` };
         }
       }
     }
@@ -619,9 +652,8 @@ Tabelle:
   }
 
   function setTodayAndNow(){
-    const { dayIndex, dayKey, dayName } = computeDayKeyNow();
+    const { dayKey, dayName } = computeDayKeyNow();
 
-    // Detect shift from clock (more reliable than manual selection)
     const shift = detectShift();
     elShift.value = shift;
 
@@ -650,6 +682,7 @@ Tabelle:
       btn.type="button";
       btn.textContent=name;
       btn.addEventListener("click", ()=>{
+        haptic("tap");
         const target = Array.from(elEmp.options).find(o => normName(o.value)===normName(name));
         if(target){
           elEmp.value = target.value;
@@ -709,6 +742,8 @@ Tabelle:
   const themeLight = document.getElementById("themeLight");
   const modeFull = document.getElementById("modeFull");
   const modeCompact = document.getElementById("modeCompact");
+  const haptOn = document.getElementById("haptOn");
+  const haptOff = document.getElementById("haptOff");
 
   let plan = null;
   let applyTimer = null;
@@ -811,16 +846,12 @@ Tabelle:
     }, 600);
   }
 
-  // ---------- persistence ----------
-  function saveUI(){
-    // already persisted in setTheme / setMode, but keep helper if needed
-  }
-
   // ---------- init ----------
   (function init(){
-    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full" });
+    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full", haptics:"on" });
     setTheme(ui.theme || "auto");
     setMode(ui.mode || "full");
+    setHaptics(ui.haptics || "on");
 
     const draft = loadDraft();
     if(draft){
@@ -835,18 +866,21 @@ Tabelle:
     setEnabled(false);
     renderFavbar();
 
-    // Helpful hint
     const detected = detectShift();
     const shiftName = detected==="early" ? "Früh" : (detected==="late" ? "Spät" : "Nacht");
     nowHint.textContent = `Schicht-Erkennung: ${shiftName}. Tippe „Heute/Jetzt“, um Tag + Runde zu setzen.`;
   })();
 
   // ---------- events ----------
-  themeAuto.addEventListener("click", ()=>setTheme("auto"));
-  themeDark.addEventListener("click", ()=>setTheme("dark"));
-  themeLight.addEventListener("click", ()=>setTheme("light"));
-  modeFull.addEventListener("click", ()=>setMode("full"));
-  modeCompact.addEventListener("click", ()=>setMode("compact"));
+  themeAuto.addEventListener("click", ()=>{ setTheme("auto"); haptic("tap"); });
+  themeDark.addEventListener("click", ()=>{ setTheme("dark"); haptic("tap"); });
+  themeLight.addEventListener("click", ()=>{ setTheme("light"); haptic("tap"); });
+
+  modeFull.addEventListener("click", ()=>{ setMode("full"); haptic("tap"); });
+  modeCompact.addEventListener("click", ()=>{ setMode("compact"); haptic("tap"); });
+
+  haptOn.addEventListener("click", ()=>{ setHaptics("on"); haptic("tap"); });
+  haptOff.addEventListener("click", ()=>{ setHaptics("off"); });
 
   elTable.addEventListener("input", ()=>{ saveDraft(); scheduleAutoApply(); });
   [elRounds, elAutoApply, elAutoSave, elShift].forEach(el=>{
@@ -855,12 +889,19 @@ Tabelle:
   });
 
   elApplyBtn.addEventListener("click", ()=>{
-    try{ applyPlan({silent:false}); }
-    catch(e){ plan=null; setEnabled(false); showResultErr(e.message || String(e)); }
+    try{
+      haptic("tap");
+      applyPlan({silent:false});
+    } catch(e){
+      plan=null;
+      setEnabled(false);
+      showResultErr(e.message || String(e));
+    }
   });
 
   nowBtn.addEventListener("click", ()=>{
     try{
+      haptic("tap");
       setTodayAndNow();
       showResultOk("Heute/Jetzt gesetzt. Tag und Runde sind vorausgewählt.");
     } catch(e){
@@ -870,6 +911,7 @@ Tabelle:
 
   elQuery.addEventListener("click", ()=>{
     try{
+      haptic("tap");
       if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
       const employee = elEmp.value;
       const dayKey = elDay.value;
@@ -897,6 +939,7 @@ Tabelle:
 
   elWeekBtn.addEventListener("click", ()=>{
     try{
+      haptic("tap");
       if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
       const employee = elEmp.value;
       const data = plan.weeklyOverview(employee, 5);
@@ -921,6 +964,7 @@ Tabelle:
   });
 
   elClear.addEventListener("click", ()=>{
+    haptic("tap");
     elTable.value="";
     saveDraft();
     plan=null;
@@ -930,11 +974,12 @@ Tabelle:
     showResultOk("Eingabe geleert.");
   });
 
-  editFavBtn.addEventListener("click", editFavs);
+  editFavBtn.addEventListener("click", ()=>{ haptic("tap"); editFavs(); });
 
   // ---------- save/load plans ----------
   elSaveNew.addEventListener("click", ()=>{
     try{
+      haptic("tap");
       const name=(elPlanName.value||"").trim();
       if(!name) throw new Error("Bitte einen Namen eingeben (z.B. 'Standardwoche').");
       const text=elTable.value;
@@ -957,6 +1002,7 @@ Tabelle:
 
   elOverwriteActive.addEventListener("click", ()=>{
     try{
+      haptic("tap");
       const state=loadState();
       const id=state.activeId;
       if(!id || !state.plans[id]) throw new Error("Kein aktiver Plan ausgewählt.");
@@ -977,6 +1023,7 @@ Tabelle:
 
   elLoadSaved.addEventListener("click", ()=>{
     try{
+      haptic("tap");
       const state=loadState();
       const id=elPlanSelect.value;
       if(!id || !state.plans[id]) throw new Error("Kein gespeicherter Plan ausgewählt.");
@@ -984,7 +1031,6 @@ Tabelle:
 
       elTable.value=p.text || "";
       elRounds.value=p.rounds || 4;
-      elShift.value = elShift.value || "early";
       saveDraft();
 
       state.activeId=id;
@@ -998,6 +1044,7 @@ Tabelle:
 
   elDeleteSaved.addEventListener("click", ()=>{
     try{
+      haptic("tap");
       const state=loadState();
       const id=elPlanSelect.value;
       if(!id || !state.plans[id]) throw new Error("Kein gespeicherter Plan ausgewählt.");
@@ -1015,6 +1062,7 @@ Tabelle:
   // ---------- export ----------
   elExportBtn.addEventListener("click", ()=>{
     try{
+      haptic("tap");
       elExportOut.value = JSON.stringify(loadState(), null, 2);
       showResultOk("Export erzeugt. Kopieren und z.B. in Notizen sichern.");
     } catch(e){ showResultErr(e.message || String(e)); }
@@ -1024,10 +1072,6 @@ Tabelle:
   [elEmp, elDay, elRound].forEach(el=>{
     el.addEventListener("change", ()=>saveLastQuery());
   });
-
 </script>
 </body>
 </html>
-
-
-
