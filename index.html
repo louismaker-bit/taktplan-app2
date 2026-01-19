@@ -44,11 +44,10 @@
       }
     }
 
-    html, body { height: 100%; }
     body{
       margin: 0;
       font-family: var(--sans);
-      /* FIX: remove green radial gradient; keep a subtle blue only */
+      /* FIX: no green gradient; keep subtle blue only */
       background:
         radial-gradient(1200px 600px at 20% -10%, rgba(125,211,252,.14), transparent 60%),
         var(--bg);
@@ -70,6 +69,7 @@
     }
 
     .wrap{ max-width: 820px; margin: 0 auto; padding: 14px; padding-top: 88px; }
+
     .topbar{
       position: fixed; left: 0; right: 0; top: 0;
       padding: 12px 14px calc(12px + env(safe-area-inset-top));
@@ -92,6 +92,7 @@
     .title{ font-weight: 900; letter-spacing: .2px; }
     .sub{ font-size: 12px; color: var(--muted); margin-top: 2px; }
     .grow{ flex: 1; }
+
     .seg{
       display:flex; border: 1px solid var(--border); border-radius: 999px; overflow:hidden;
       background: var(--card);
@@ -113,16 +114,19 @@
       box-shadow: var(--shadow);
       margin-top: 12px;
     }
+
     .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     @media (max-width: 540px){ .grid2{ grid-template-columns: 1fr; } }
 
     label{ display:block; font-weight: 900; margin: 10px 0 6px; color: var(--text); }
+
     textarea{
       width:100%; min-height: 130px; resize: vertical;
       border-radius: 14px; border: 1px solid var(--border);
       background: var(--card); color: var(--text);
       padding: 12px; font-size: 14px;
     }
+
     select, input{
       width: 100%;
       height: var(--tap);
@@ -130,6 +134,7 @@
       background: var(--card); color: var(--text);
       padding: 0 12px; font-size: 16px;
     }
+
     button.btn{
       height: var(--tap);
       border-radius: 14px; border: 1px solid var(--border);
@@ -145,14 +150,17 @@
     button.btn:active{ transform: translateY(1px); }
 
     .small{ font-size: 12px; color: var(--muted); line-height: 1.35; }
+
     .pill{
       display:inline-flex; gap:8px; align-items:center;
       padding: 6px 10px; border: 1px solid var(--border); border-radius: 999px;
       background: var(--card); color: var(--muted); font-size: 12px;
       margin: 6px 6px 0 0;
     }
+
     .result.ok{ background: var(--ok); border-color: rgba(34,197,94,.35); }
     .result.err{ background: var(--err); border-color: rgba(239,68,68,.35); }
+
     .mono{ font-family: var(--mono); }
 
     .favbar{
@@ -191,18 +199,21 @@
     <div class="topbar-inner">
       <div>
         <div class="title">Taktplan</div>
-        <div class="sub">Offline • Favoriten • Heute/Jetzt</div>
+        <div class="sub">Offline • Favoriten • Heute/Jetzt • Vergleich</div>
       </div>
       <div class="grow"></div>
+
       <div class="seg" aria-label="Theme">
         <button id="themeAuto" class="active" type="button">Auto</button>
         <button id="themeDark" type="button">Dark</button>
         <button id="themeLight" type="button">Light</button>
       </div>
+
       <div class="seg" aria-label="Mode">
         <button id="modeFull" class="active" type="button">Full</button>
         <button id="modeCompact" type="button">Kompakt</button>
       </div>
+
       <div class="seg" aria-label="Haptik">
         <button id="haptOn" class="active" type="button">Haptik</button>
         <button id="haptOff" type="button">Aus</button>
@@ -244,10 +255,10 @@
 
       <label>Plan einfügen (OCR oder Tabelle)</label>
       <textarea id="table" placeholder="OCR:
-1 Airbag LOUIS 2 Bepl. Re. BESETZT ...
+1 Airbag LISA 2 Bepl. Re. BESETZT ...
 
 Tabelle:
-1;Airbag;LOUIS"></textarea>
+1;Airbag;LISA"></textarea>
 
       <div class="grid2">
         <div>
@@ -282,16 +293,21 @@ Tabelle:
     <div class="card">
       <div class="grid2">
         <div>
-          <label>Mitarbeiter</label>
+          <label>Mitarbeiter A</label>
           <select id="employee" disabled></select>
           <div class="favbar" id="favbar"></div>
+
+          <label style="margin-top:12px;">Mitarbeiter B (Vergleich)</label>
+          <select id="employee2" disabled></select>
         </div>
+
         <div>
           <label>Tag</label>
           <select id="day" disabled>
             <option value="mo">Mo</option><option value="di">Di</option><option value="mi">Mi</option>
             <option value="do">Do</option><option value="fr">Fr</option><option value="sa">Sa</option><option value="so">So</option>
           </select>
+
           <label>Runde</label>
           <select id="round" disabled></select>
         </div>
@@ -299,12 +315,21 @@ Tabelle:
 
       <div class="grid2">
         <button class="btn primary" id="queryBtn" type="button" disabled>Abfrage</button>
+        <button class="btn" id="compareBtn" type="button" disabled>Vergleich</button>
+      </div>
+
+      <div class="grid2">
         <button class="btn" id="weekBtn" type="button" disabled>Wochenübersicht (Mo–Fr)</button>
+        <button class="btn" id="swapBtn" type="button" disabled>Tauschen</button>
       </div>
 
       <div class="grid2">
         <button class="btn" id="clearBtn" type="button">Eingabe leeren</button>
         <button class="btn" id="editFavBtn" type="button">Favoriten bearbeiten</button>
+      </div>
+
+      <div class="small" style="margin-top:8px;">
+        Tipp: Wenn „Vergleich“ aktiv ist, aktualisiert sich die Anzeige automatisch bei Änderungen (Tag/Runde/Mitarbeiter).
       </div>
     </div>
 
@@ -332,7 +357,7 @@ Tabelle:
   // ---------- storage keys ----------
   const STORAGE_KEY = "taktplan_saved_v5";          // { plans: {id:{name,text,rounds,updatedAt}}, activeId }
   const LAST_DRAFT_KEY = "taktplan_last_draft_v5";  // { text, rounds, autoApply, autoSave, shiftPreset }
-  const LAST_QUERY_KEY = "taktplan_last_query_v4";  // { employee, day, round }
+  const LAST_QUERY_KEY = "taktplan_last_query_v5";  // { employee, employee2, day, round, view }
   const UI_KEY = "taktplan_ui_v3";                  // { theme: auto|dark|light, mode: full|compact, haptics: on|off }
   const FAV_KEY = "taktplan_favs_v2";               // [ "LOUIS", "FLORIAN", ... ]
 
@@ -370,10 +395,17 @@ Tabelle:
   function loadDraft(){ return loadJSON(LAST_DRAFT_KEY, null); }
 
   function saveLastQuery(){
-    saveJSON(LAST_QUERY_KEY, { employee: elEmp.value, day: elDay.value, round: elRound.value });
+    saveJSON(LAST_QUERY_KEY, {
+      employee: elEmp.value,
+      employee2: elEmp2.value,
+      day: elDay.value,
+      round: elRound.value,
+      view: currentView
+    });
   }
   function loadLastQuery(){ return loadJSON(LAST_QUERY_KEY, null); }
 
+  // ---------- theme/mode/haptics ----------
   function setTheme(theme){
     const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full", haptics:"on" });
     ui.theme = theme;
@@ -422,18 +454,20 @@ Tabelle:
     else if(kind === "err") navigator.vibrate([30, 40, 30]);
   }
 
-  function showResultOk(html){
-    haptic("ok");
+  // Show helpers with optional haptics (so auto-update doesn't buzz)
+  function showOk(html, doHaptic=true){
+    if(doHaptic) haptic("ok");
     elResult.classList.remove("hide","err");
     elResult.classList.add("ok");
     elResult.innerHTML = html;
   }
-  function showResultErr(msg){
-    haptic("err");
+  function showErr(msg, doHaptic=true){
+    if(doHaptic) haptic("err");
     elResult.classList.remove("hide","ok");
     elResult.classList.add("err");
     elResult.innerHTML = `<div><strong>Fehler:</strong> ${msg}</div>`;
   }
+
   function hideWeek(){ elWeek.classList.add("hide"); elWeek.innerHTML=""; }
 
   function fillRounds(n){
@@ -446,10 +480,13 @@ Tabelle:
   }
   function setEnabled(on){
     elEmp.disabled = !on;
+    elEmp2.disabled = !on;
     elDay.disabled = !on;
     elRound.disabled = !on;
     elQuery.disabled = !on;
+    elCompare.disabled = !on;
     elWeekBtn.disabled = !on;
+    elSwap.disabled = !on;
   }
 
   // ---------- parsing (table + OCR single line) ----------
@@ -653,6 +690,8 @@ Tabelle:
     const shiftName = (shift==="early") ? "Früh" : (shift==="late" ? "Spät" : "Nacht");
     nowHint.textContent = `Heute: ${dayName} • Schicht: ${shiftName} • ${info.label}`;
 
+    // Auto-update if comparison view active
+    if(currentView==="compare") runCompare(true);
     saveLastQuery();
   }
 
@@ -674,8 +713,9 @@ Tabelle:
         const target = Array.from(elEmp.options).find(o => normName(o.value)===normName(name));
         if(target){
           elEmp.value = target.value;
-          saveLastQuery();
           hideWeek();
+          if(currentView==="compare") runCompare(true);
+          saveLastQuery();
         }
       });
       favbar.appendChild(btn);
@@ -704,10 +744,14 @@ Tabelle:
   const elShift = document.getElementById("shiftPreset");
 
   const elEmp = document.getElementById("employee");
+  const elEmp2 = document.getElementById("employee2");
+
   const elDay = document.getElementById("day");
   const elRound = document.getElementById("round");
   const elQuery = document.getElementById("queryBtn");
+  const elCompare = document.getElementById("compareBtn");
   const elWeekBtn = document.getElementById("weekBtn");
+  const elSwap = document.getElementById("swapBtn");
   const elClear = document.getElementById("clearBtn");
 
   const elResult = document.getElementById("result");
@@ -732,6 +776,14 @@ Tabelle:
 
   let plan = null;
   let applyTimer = null;
+
+  // view state: "single" | "compare"
+  let currentView = "single";
+
+  function setView(v){
+    currentView = v;
+    saveLastQuery();
+  }
 
   function refreshPlanSelect(){
     const state = loadState();
@@ -785,20 +837,36 @@ Tabelle:
       .sort((a,b)=>normName(a).localeCompare(normName(b)));
 
     elEmp.innerHTML="";
+    elEmp2.innerHTML="";
     for(const name of names){
-      const opt=document.createElement("option");
-      opt.value=name; opt.textContent=name;
-      elEmp.appendChild(opt);
+      const optA=document.createElement("option");
+      optA.value=name; optA.textContent=name;
+      elEmp.appendChild(optA);
+
+      const optB=document.createElement("option");
+      optB.value=name; optB.textContent=name;
+      elEmp2.appendChild(optB);
     }
+
     fillRounds(rpd);
     setEnabled(true);
 
     const last = loadLastQuery();
     if(last){
-      const target = names.find(n=>normName(n)===normName(last.employee));
-      if(target) elEmp.value = target;
+      const targetA = names.find(n=>normName(n)===normName(last.employee));
+      const targetB = names.find(n=>normName(n)===normName(last.employee2));
+      if(targetA) elEmp.value = targetA;
+      if(targetB) elEmp2.value = targetB;
       if(last.day) elDay.value = last.day;
       if(last.round) elRound.value = last.round;
+      if(last.view) currentView = last.view;
+    }
+
+    // Default B to "next" if empty or same and more options exist
+    if(elEmp2.options.length > 1 && normName(elEmp2.value) === normName(elEmp.value)){
+      const aIdx = elEmp.selectedIndex >= 0 ? elEmp.selectedIndex : 0;
+      const bIdx = (aIdx + 1) % elEmp2.options.length;
+      elEmp2.selectedIndex = bIdx;
     }
 
     // Auto-save active plan after successful apply
@@ -813,8 +881,13 @@ Tabelle:
     renderFavbar();
     renderDiagnostics(diag, rpd);
 
+    // Auto update if compare view is active
+    if(currentView === "compare"){
+      runCompare(true);
+    }
+
     if(!silent){
-      showResultOk(`Plan angewendet. Du kannst jetzt abfragen oder „Heute/Jetzt“ nutzen.`);
+      showOk(`Plan angewendet. Du kannst jetzt abfragen, vergleichen oder „Heute/Jetzt“ nutzen.`, true);
     }
   }
 
@@ -829,6 +902,80 @@ Tabelle:
         // silent on auto-apply
       }
     }, 600);
+  }
+
+  // ---------- compare ----------
+  function runSingle(auto=false){
+    if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
+
+    const employee = elEmp.value;
+    const dayKey = elDay.value;
+    const roundNo = parseInt(elRound.value,10);
+
+    const row = plan.assignment(employee, dayKey, roundNo);
+    const dayName = DAY_NAMES[DAY_ALIASES[dayKey]];
+
+    hideWeek();
+
+    showOk(`
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <span class="pill"><strong>${employee}</strong></span>
+        <span class="pill">${dayName}</span>
+        <span class="pill">Runde <strong>${roundNo}</strong></span>
+      </div>
+      <div style="font-size:22px; font-weight:900; margin-top:10px;">${row.bezeichnung}</div>
+      <div class="mono" style="margin-top:8px; color: var(--muted);">Takt ${row.takt}</div>
+    `, !auto);
+  }
+
+  function runCompare(auto=false){
+    if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
+
+    const employeeA = elEmp.value;
+    const employeeB = elEmp2.value;
+    const dayKey = elDay.value;
+    const roundNo = parseInt(elRound.value,10);
+
+    const rowA = plan.assignment(employeeA, dayKey, roundNo);
+    const rowB = plan.assignment(employeeB, dayKey, roundNo);
+    const dayName = DAY_NAMES[DAY_ALIASES[dayKey]];
+
+    hideWeek();
+
+    const same = (normName(rowA.bezeichnung) === normName(rowB.bezeichnung)) && (rowA.takt === rowB.takt);
+
+    showOk(`
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <span class="pill">${dayName}</span>
+        <span class="pill">Runde <strong>${roundNo}</strong></span>
+        ${same ? `<span class="pill"><strong>Gleich</strong></span>` : `<span class="pill">Unterschied</span>`}
+        ${auto ? `<span class="pill">Auto</span>` : ``}
+      </div>
+
+      <div style="margin-top:12px; display:grid; gap:10px;">
+        <div style="padding:12px; border:1px solid var(--border); border-radius:14px; background: var(--card);">
+          <div style="font-weight:900; margin-bottom:6px;">${employeeA}</div>
+          <div style="font-size:20px; font-weight:900;">${rowA.bezeichnung}</div>
+          <div class="mono" style="margin-top:6px; color: var(--muted);">Takt ${rowA.takt}</div>
+        </div>
+
+        <div style="padding:12px; border:1px solid var(--border); border-radius:14px; background: var(--card);">
+          <div style="font-weight:900; margin-bottom:6px;">${employeeB}</div>
+          <div style="font-size:20px; font-weight:900;">${rowB.bezeichnung}</div>
+          <div class="mono" style="margin-top:6px; color: var(--muted);">Takt ${rowB.takt}</div>
+        </div>
+      </div>
+    `, !auto);
+  }
+
+  function maybeAutoUpdate(){
+    if(!plan) return;
+    try{
+      if(currentView==="compare") runCompare(true);
+      else if(currentView==="single") runSingle(true);
+    } catch(e){
+      // ignore on auto-update
+    }
   }
 
   // ---------- plan save/load ----------
@@ -881,7 +1028,7 @@ Tabelle:
     refreshPlanSelect();
 
     applyPlan({silent:false});
-    showResultOk(`Plan geladen & angewendet: <strong>${p.name}</strong>`);
+    showOk(`Plan geladen & angewendet: <strong>${p.name}</strong>`, true);
   }
 
   function deleteSelectedPlan(){
@@ -895,7 +1042,7 @@ Tabelle:
     saveState(state);
     refreshPlanSelect();
 
-    showResultOk(`Plan gelöscht: <strong>${name}</strong>`);
+    showOk(`Plan gelöscht: <strong>${name}</strong>`, true);
   }
 
   // ---------- init ----------
@@ -913,6 +1060,9 @@ Tabelle:
       if(draft.autoSave) elAutoSave.value = draft.autoSave;
       if(draft.shiftPreset) elShift.value = draft.shiftPreset;
     }
+
+    const last = loadLastQuery();
+    if(last && last.view) currentView = last.view;
 
     refreshPlanSelect();
     setEnabled(false);
@@ -947,7 +1097,7 @@ Tabelle:
     } catch(e){
       plan=null;
       setEnabled(false);
-      showResultErr(e.message || String(e));
+      showErr(e.message || String(e), true);
     }
   });
 
@@ -955,37 +1105,47 @@ Tabelle:
     try{
       haptic("tap");
       setTodayAndNow();
-      showResultOk("Heute/Jetzt gesetzt. Tag und Runde sind vorausgewählt.");
+      showOk("Heute/Jetzt gesetzt. Tag und Runde sind vorausgewählt.", true);
     } catch(e){
-      showResultErr(e.message || String(e));
+      showErr(e.message || String(e), true);
     }
   });
 
   elQuery.addEventListener("click", ()=>{
     try{
       haptic("tap");
-      if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
-      const employee = elEmp.value;
-      const dayKey = elDay.value;
-      const roundNo = parseInt(elRound.value,10);
-
-      const row = plan.assignment(employee, dayKey, roundNo);
-      const dayName = DAY_NAMES[DAY_ALIASES[dayKey]];
-
+      setView("single");
+      runSingle(false);
       saveLastQuery();
-      hideWeek();
-
-      showResultOk(`
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-          <span class="pill"><strong>${employee}</strong></span>
-          <span class="pill">${dayName}</span>
-          <span class="pill">Runde <strong>${roundNo}</strong></span>
-        </div>
-        <div style="font-size:22px; font-weight:900; margin-top:10px;">${row.bezeichnung}</div>
-        <div class="mono" style="margin-top:8px; color: var(--muted);">Takt ${row.takt}</div>
-      `);
     } catch(e){
-      showResultErr(e.message || String(e));
+      showErr(e.message || String(e), true);
+    }
+  });
+
+  elCompare.addEventListener("click", ()=>{
+    try{
+      haptic("tap");
+      setView("compare");
+      runCompare(false);
+      saveLastQuery();
+    } catch(e){
+      showErr(e.message || String(e), true);
+    }
+  });
+
+  elSwap.addEventListener("click", ()=>{
+    try{
+      haptic("tap");
+      const a = elEmp.value;
+      const b = elEmp2.value;
+      elEmp.value = b;
+      elEmp2.value = a;
+      hideWeek();
+      if(currentView==="compare") runCompare(true);
+      saveLastQuery();
+      showOk("Mitarbeiter A und B getauscht.", true);
+    } catch(e){
+      showErr(e.message || String(e), true);
     }
   });
 
@@ -995,6 +1155,7 @@ Tabelle:
       if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
       const employee = elEmp.value;
       const data = plan.weeklyOverview(employee, 5);
+      setView("single");
       saveLastQuery();
 
       elWeek.classList.remove("hide");
@@ -1011,7 +1172,7 @@ Tabelle:
         </table>
       `;
     } catch(e){
-      showResultErr(e.message || String(e));
+      showErr(e.message || String(e), true);
     }
   });
 
@@ -1023,7 +1184,7 @@ Tabelle:
     setEnabled(false);
     hideWeek();
     diagPills.innerHTML="";
-    showResultOk("Eingabe geleert.");
+    showOk("Eingabe geleert.", true);
   });
 
   editFavBtn.addEventListener("click", ()=>{ haptic("tap"); editFavs(); });
@@ -1032,9 +1193,10 @@ Tabelle:
     try{
       haptic("tap");
       saveNewPlan();
-      showResultOk(`Gespeichert und aktiviert: <strong>${loadState().plans[loadState().activeId].name}</strong>`);
+      const st = loadState();
+      showOk(`Gespeichert und aktiviert: <strong>${st.plans[st.activeId].name}</strong>`, true);
     } catch(e){
-      showResultErr(e.message || String(e));
+      showErr(e.message || String(e), true);
     }
   });
 
@@ -1042,9 +1204,9 @@ Tabelle:
     try{
       haptic("tap");
       overwriteActivePlan();
-      showResultOk(`Aktiver Plan überschrieben.`);
+      showOk(`Aktiver Plan überschrieben.`, true);
     } catch(e){
-      showResultErr(e.message || String(e));
+      showErr(e.message || String(e), true);
     }
   });
 
@@ -1053,7 +1215,7 @@ Tabelle:
       haptic("tap");
       loadSelectedPlan();
     } catch(e){
-      showResultErr(e.message || String(e));
+      showErr(e.message || String(e), true);
     }
   });
 
@@ -1062,14 +1224,18 @@ Tabelle:
       haptic("tap");
       deleteSelectedPlan();
     } catch(e){
-      showResultErr(e.message || String(e));
+      showErr(e.message || String(e), true);
     }
   });
 
-  [elEmp, elDay, elRound].forEach(el=>{
-    el.addEventListener("change", ()=>saveLastQuery());
+  // Auto-update hooks (only meaningful if plan exists)
+  [elEmp, elEmp2, elDay, elRound].forEach(el=>{
+    el.addEventListener("change", ()=>{
+      saveLastQuery();
+      maybeAutoUpdate();
+    });
   });
+
 </script>
 </body>
 </html>
-
