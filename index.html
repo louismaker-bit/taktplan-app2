@@ -321,14 +321,21 @@ Tabelle:
       </div>
 
       <div class="grid2">
+        <button class="btn" id="dayBtn" type="button" disabled>Tagesüberblick</button>
         <button class="btn" id="weekBtn" type="button" disabled>Wochenübersicht (Mo–Fr)</button>
-        <button class="btn" id="swapBtn" type="button" disabled>Tauschen</button>
       </div>
 
       <div class="grid2">
+        <button class="btn" id="swapBtn" type="button" disabled>Tauschen</button>
         <button class="btn" id="clearBtn" type="button">Eingabe leeren</button>
-        <button class="btn" id="editFavBtn" type="button">Favoriten bearbeiten</button>
       </div>
+
+
+      <div class="grid2">
+        <button class="btn" id="editFavBtn" type="button">Favoriten bearbeiten</button>
+        <button class="btn" id="compareBtn" type="button" disabled>Vergleich</button>
+      </div>
+
 
       <div class="small" style="margin-top:8px;">
         Tipp: Wenn „Vergleich“ aktiv ist, aktualisiert sich die Anzeige automatisch bei Änderungen (Tag/Runde/Mitarbeiter).
@@ -337,6 +344,8 @@ Tabelle:
 
     <div id="result" class="card result hide"></div>
     <div id="week" class="card hide"></div>
+    <div id="dayView" class="card hide"></div>
+
 
     <div class="card planSaveCard">
       <label>Plan speichern</label>
@@ -471,6 +480,7 @@ Tabelle:
   }
 
   function hideWeek(){ elWeek.classList.add("hide"); elWeek.innerHTML=""; }
+  function hideDay(){ elDayView.classList.add("hide"); elDayView.innerHTML=""; }
 
   function fillRounds(n){
     elRound.innerHTML = "";
@@ -484,6 +494,7 @@ Tabelle:
     elEmp.disabled = !on;
     elEmp2.disabled = !on;
     elDay.disabled = !on;
+    elDayBtn.disabled = !on;
     elRound.disabled = !on;
     elQuery.disabled = !on;
     elCompare.disabled = !on;
@@ -679,12 +690,21 @@ Tabelle:
   }
 
   function setTodayAndNow(){
-    const { dayKey, dayName } = computeDayKeyNow();
-
     const shift = detectShift();
     elShift.value = shift;
 
     const info = currentRoundByShift(shift);
+
+    // Tag bestimmen – bei Nachtschicht nach 00:00 gehört es zum Vortag
+    let { dayIndex, dayKey, dayName } = computeDayKeyNow();
+    const t = timeMinNow();
+    const nightAfterMidnight = (shift === "night") && (t < toMin(6,11)); // 00:00–06:10
+
+    if(nightAfterMidnight){
+      dayIndex = (dayIndex + 6) % 7; // -1 mod 7
+      dayKey = DAY_KEYS[dayIndex];
+      dayName = DAY_NAMES[dayIndex];
+    }
 
     elDay.value = dayKey;
     if(info.round) elRound.value = String(info.round);
@@ -692,6 +712,7 @@ Tabelle:
     const shiftName = (shift==="early") ? "Früh" : (shift==="late" ? "Spät" : "Nacht");
     nowHint.textContent = `Heute: ${dayName} • Schicht: ${shiftName} • ${info.label}`;
 
+    // Auto-refresh current view without buzzing
     if(currentView==="compare") runCompare(true);
     else if(currentView==="single") runSingle(true);
 
@@ -717,6 +738,7 @@ Tabelle:
         if(target){
           elEmp.value = target.value;
           hideWeek();
+          hideDay();
           maybeAutoUpdate();
           saveLastQuery();
         }
@@ -756,6 +778,9 @@ Tabelle:
   const elWeekBtn = document.getElementById("weekBtn");
   const elSwap = document.getElementById("swapBtn");
   const elClear = document.getElementById("clearBtn");
+
+  const elDayBtn = document.getElementById("dayBtn");
+  const elDayView = document.getElementById("dayView");
 
   const elResult = document.getElementById("result");
   const elWeek = document.getElementById("week");
@@ -829,6 +854,7 @@ Tabelle:
   function applyPlan({silent=false} = {}){
     const text = elTable.value;
     const rpd = parseInt(elRounds.value,10) || 4;
+    hideDay();
     hideWeek();
 
     const rows = parseTable(text);
@@ -916,6 +942,7 @@ Tabelle:
     const dayName = DAY_NAMES[DAY_ALIASES[dayKey]];
 
     hideWeek();
+    hideDay();
 
     showOk(`
       <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
@@ -1047,6 +1074,36 @@ Tabelle:
   }
 
   // ---------- week view ----------
+  function showDay(employee, dayKey){
+    if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
+
+    const dIdx = DAY_ALIASES[dayKey];
+    const dayName = DAY_NAMES[dIdx];
+
+    const data = [];
+    for(let r=1; r<=plan.roundsPerDay; r++){
+      const row = plan.assignment(employee, dayKey, r);
+      data.push({ runde:r, station: row.bezeichnung, takt: row.takt });
+    }
+
+    elDayView.classList.remove("hide");
+    elDayView.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+        <div style="font-weight:900;">Tagesüberblick: ${employee}</div>
+        <div class="small">${dayName} • Runden: ${plan.roundsPerDay}</div>
+      </div>
+      <table>
+        <thead><tr><th>R</th><th>Station</th><th>Takt</th></tr></thead>
+        <tbody>
+          ${data.map(r=>`<tr><td>${r.runde}</td><td>${r.station}</td><td class="mono">${r.takt}</td></tr>`).join("")}
+        </tbody>
+      </table>
+      <div class="small" style="margin-top:10px;">
+        Screenshot-Tipp: scrolle so, dass die Topbar weg ist – dann passt mehr aufs Bild.
+      </div>
+    `;
+  }
+
   function showWeek(employee){
     if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
 
@@ -1158,21 +1215,50 @@ Tabelle:
     }
   });
 
+  elDayBtn.addEventListener("click", ()=>{
+  try{
+    haptic("tap");
+    setView("single");
+    hideWeek();
+    const employee = elEmp.value;
+    const dayKey = elDay.value;
+    showDay(employee, dayKey);
+    saveLastQuery();
+  } catch(e){
+    showErr(e.message || String(e), true);
+  }
+});
+
   elSwap.addEventListener("click", ()=>{
-    try{
-      haptic("tap");
-      const a = elEmp.value;
-      const b = elEmp2.value;
-      elEmp.value = b;
-      elEmp2.value = a;
+  try{
+    haptic("tap");
+    const a = elEmp.value;
+    const b = elEmp2.value;
+    elEmp.value = b;
+    elEmp2.value = a;
+
+    // Falls eine Übersicht offen ist: neu rendern
+    const dayOpen = !elDayView.classList.contains("hide");
+    const weekOpen = !elWeek.classList.contains("hide");
+
+    if(weekOpen){
+      hideDay();
+      showWeek(elEmp.value);
+    } else if(dayOpen){
       hideWeek();
+      showDay(elEmp.value, elDay.value);
+    } else {
+      hideWeek();
+      hideDay();
       maybeAutoUpdate();
-      saveLastQuery();
-      showOk("Mitarbeiter A und B getauscht.", true);
-    } catch(e){
-      showErr(e.message || String(e), true);
     }
-  });
+
+    saveLastQuery();
+    showOk("Mitarbeiter A und B getauscht.", true);
+  } catch(e){
+    showErr(e.message || String(e), true);
+  }
+});
 
   elWeekBtn.addEventListener("click", ()=>{
     try{
@@ -1193,6 +1279,7 @@ Tabelle:
     plan=null;
     setEnabled(false);
     hideWeek();
+    hideDay();
     diagPills.innerHTML="";
     showOk("Eingabe geleert.", true);
   });
@@ -1248,3 +1335,4 @@ Tabelle:
 </script>
 </body>
 </html>
+
