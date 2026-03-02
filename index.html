@@ -133,15 +133,20 @@
       margin-top: 8px;
     }
     .favbar button{
-      height: 40px;
+      height: 34px;
       padding: 0 12px;
       border-radius: 999px;
       border: 1px solid var(--border);
       background: var(--card);
       color: var(--text);
       font-weight: 900;
+      font-size: 13px;
     }
     .favbar button:active{ transform: translateY(1px); }
+    .favbar button.active{
+      background: rgba(125,211,252,.24);
+      border-color: rgba(125,211,252,.7);
+    }
 
     .hide{ display:none !important; }
 
@@ -161,7 +166,7 @@
     <div class="topbar-inner">
       <div>
         <div class="title">Taktplan</div>
-        <div class="sub">Offline • Wochenübersicht • Takt-Suche</div>
+        <div class="sub">Offline • Wochenübersicht • Stations-Suche</div>
       </div>
       <div class="grow"></div>
       <div class="seg" aria-label="Haptik">
@@ -173,13 +178,12 @@
 
   <div class="wrap">
 
-    <!-- Wochenübersicht (Mitarbeiter oben) -->
+    <!-- 1. Mitarbeiter für Wochenübersicht -->
     <div class="card">
       <div class="grid2">
         <div>
           <label>Mitarbeiter (für Wochenübersicht)</label>
-          <select id="employee" disabled></select>
-          <div class="favbar" id="favbar"></div>
+          <div id="empBar" class="favbar"></div>
         </div>
 
         <div>
@@ -193,16 +197,16 @@
 
       <div class="grid2" style="margin-top:10px;">
         <button class="btn primary" id="weekBtn" type="button" disabled>Wochenübersicht anzeigen</button>
-        <button class="btn" id="editFavBtn" type="button">Favoriten bearbeiten</button>
+        <div></div>
       </div>
     </div>
 
-    <!-- Wochenübersicht-Tabelle -->
+    <!-- 2. Wochenübersicht-Tabelle -->
     <div id="week" class="card hide"></div>
 
-    <!-- Takt-Suche -->
+    <!-- 3. Takt-/Stations-Suche -->
     <div class="card">
-      <label>Takt-Suche (Tag + Runde + Takt → Mitarbeiter)</label>
+      <label>Stations-Suche (Tag + Runde + Station → Mitarbeiter)</label>
       <div class="grid2">
         <div>
           <label>Tag</label>
@@ -224,25 +228,25 @@
 
       <div class="grid2" style="margin-top:10px;">
         <div>
-          <label>Takt</label>
-          <select id="searchTakt">
+          <label>Station</label>
+          <select id="searchStation">
             <!-- wird nach Plan anwenden befüllt -->
           </select>
         </div>
         <div style="display:flex; align-items:flex-end;">
-          <button class="btn primary" id="searchBtn" type="button" disabled>Wer hat diesen Takt?</button>
+          <button class="btn primary" id="searchBtn" type="button" disabled>Wer hat diese Station?</button>
         </div>
       </div>
 
       <div class="small" style="margin-top:8px;">
-        Hinweis: Wochenstart-Einstellung wirkt auch hier (So–Fr verschiebt den Rotationsbeginn auf Sonntag Runde 1).
+        Wochenstart-Einstellung wirkt auch hier (So–Fr verschiebt den Rotationsbeginn auf Sonntag Runde 1).
       </div>
     </div>
 
-    <!-- Ergebnis-Box -->
+    <!-- 4. Ergebnis-Box -->
     <div id="result" class="card result hide"></div>
 
-    <!-- Plan speichern -->
+    <!-- 5. Plan speichern -->
     <div class="card">
       <label>Plan speichern</label>
       <input id="planName" placeholder="z.B. Standardwoche / Änderung Mittwoch" />
@@ -252,12 +256,12 @@
       </div>
     </div>
 
-    <!-- Statuszeile aktiver Plan -->
+    <!-- 6. Statuszeile aktiver Plan -->
     <div class="card">
       <div id="activeStatus" class="small">Aktiver Plan: keiner</div>
     </div>
 
-    <!-- Gespeicherter Plan -->
+    <!-- 7. Gespeicherter Plan -->
     <div class="card">
       <label>Gespeicherter Plan</label>
       <div class="grid2">
@@ -270,7 +274,7 @@
       <div class="small">Gespeicherte Pläne bleiben auf diesem Gerät.</div>
     </div>
 
-    <!-- Plan einfügen (OCR/Tabelle) GANZ unten -->
+    <!-- 8. Plan einfügen (OCR/Tabelle) GANZ unten -->
     <div class="card">
       <label>Plan einfügen (OCR oder Tabelle)</label>
       <textarea id="table" placeholder="OCR:
@@ -297,7 +301,6 @@ Tabelle:
   const STORAGE_KEY = "taktplan_saved_v6";
   const DRAFT_KEY   = "taktplan_draft_v1";
   const UI_KEY      = "taktplan_ui_v4";
-  const FAV_KEY     = "taktplan_favs_v2";
 
   function normName(s){ return (s || "").trim().replace(/\s+/g," ").toUpperCase(); }
   function nowISO(){ return new Date().toISOString(); }
@@ -437,9 +440,6 @@ Tabelle:
         const key=normName(r.mitarbeiter);
         if(!this.startIndex.has(key)) this.startIndex.set(key,i);
       });
-
-      this.minTakt = Math.min(...rows.map(r=>r.takt));
-      this.maxTakt = Math.max(...rows.map(r=>r.takt));
     }
     assignment(employee, dayKey, roundNo, weekMode="mon"){
       if(roundNo<1 || roundNo>this.roundsPerDay) throw new Error(`Runde muss 1-${this.roundsPerDay} sein.`);
@@ -469,13 +469,14 @@ Tabelle:
       }
       return out;
     }
-    findEmployeesByTakt(dayKey, roundNo, taktNo, mode="mon"){
+    findEmployeesByStation(dayKey, roundNo, stationName, mode="mon"){
+      const target = normName(stationName);
       const names = Array.from(this.startIndex.keys());
       const result = [];
       for(const key of names){
         const employeeName = this.cycle.find(r => normName(r.mitarbeiter) === key).mitarbeiter;
         const row = this.assignment(employeeName, dayKey, roundNo, mode);
-        if(row.takt === taktNo){
+        if(normName(row.bezeichnung) === target){
           result.push({ name: employeeName, station: row.bezeichnung, takt: row.takt });
         }
       }
@@ -494,56 +495,19 @@ Tabelle:
     return { count: rows.length, uniq: uniq.size, min, max, dups: Array.from(new Set(dups)), missing };
   }
 
-  // Favoriten
-  function loadFavs(){ return loadJSON(FAV_KEY, []); }
-  function saveFavs(favs){ saveJSON(FAV_KEY, favs); }
-
-  function renderFavbar(){
-    const favs = loadFavs();
-    favbar.innerHTML = "";
-    if(!favs.length) return;
-
-    favs.forEach(name=>{
-      const btn=document.createElement("button");
-      btn.type="button";
-      btn.textContent=name;
-      btn.addEventListener("click", ()=>{
-        haptic("tap");
-        const target = Array.from(elEmp.options).find(o => normName(o.value)===normName(name));
-        if(target){
-          elEmp.value = target.value;
-          hideWeek();
-        }
-      });
-      favbar.appendChild(btn);
-    });
-  }
-
-  function editFavs(){
-    const current = loadFavs().join(", ");
-    const input = prompt("Favoriten (kommagetrennt), z.B. LOUIS, FLORIAN, JUSTIN", current);
-    if(input===null) return;
-    const favs = input.split(",").map(s=>s.trim()).filter(Boolean);
-    saveFavs(favs);
-    renderFavbar();
-  }
-
   // DOM-Refs
   const haptOn = document.getElementById("haptOn");
   const haptOff = document.getElementById("haptOff");
 
-  const elEmployeeCard = null;
-  const elEmp = document.getElementById("employee");
+  const empBar = document.getElementById("empBar");
   const elWeekBtn = document.getElementById("weekBtn");
   const elWeekStart = document.getElementById("weekStart");
-  const editFavBtn = document.getElementById("editFavBtn");
-  const favbar = document.getElementById("favbar");
 
   const elWeek = document.getElementById("week");
 
   const elSearchDay = document.getElementById("searchDay");
   const elSearchRound = document.getElementById("searchRound");
-  const elSearchTakt = document.getElementById("searchTakt");
+  const elSearchStation = document.getElementById("searchStation");
   const elSearchBtn = document.getElementById("searchBtn");
 
   const elResult = document.getElementById("result");
@@ -565,6 +529,7 @@ Tabelle:
 
   let plan = null;
   let employees = [];
+  let selectedEmployee = null;
 
   function updateActiveStatus(){
     const state = loadState();
@@ -617,27 +582,64 @@ Tabelle:
   }
 
   function setEnabled(on){
-    elEmp.disabled = !on;
     elWeekBtn.disabled = !on;
     elSearchBtn.disabled = !on;
-    elSearchTakt.disabled = !on;
+    elSearchDay.disabled = !on;
+    elSearchRound.disabled = !on;
+    elSearchStation.disabled = !on;
   }
 
-  function populateTaktDropdown(){
-    elSearchTakt.innerHTML = "";
+  function renderEmployeeButtons(){
+    empBar.innerHTML = "";
+    if(!employees.length) return;
+
+    employees.forEach(name=>{
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = name;
+      if(selectedEmployee && normName(selectedEmployee) === normName(name)){
+        btn.classList.add("active");
+      }
+      btn.addEventListener("click", ()=>{
+        haptic("tap");
+        selectedEmployee = name;
+        empBar.querySelectorAll("button").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+        hideWeek();
+      });
+      empBar.appendChild(btn);
+    });
+  }
+
+  function populateStationDropdown(){
+    elSearchStation.innerHTML = "";
     if(!plan){
       const opt = document.createElement("option");
       opt.value = ""; opt.textContent = "Kein Plan";
-      elSearchTakt.appendChild(opt);
+      elSearchStation.appendChild(opt);
       return;
     }
-    const takts = Array.from(new Set(plan.rows.map(r=>r.takt))).sort((a,b)=>a-b);
-    for(const t of takts){
+    const stations = Array.from(
+      new Set(
+        plan.rows
+          .filter(r=>normName(r.mitarbeiter)!=="BESETZT")
+          .map(r=>r.bezeichnung.trim())
+      )
+    ).sort((a,b)=>normName(a).localeCompare(normName(b)));
+
+    if(!stations.length){
       const opt = document.createElement("option");
-      opt.value = String(t);
-      opt.textContent = String(t);
-      elSearchTakt.appendChild(opt);
+      opt.value = ""; opt.textContent = "Keine Stationen";
+      elSearchStation.appendChild(opt);
+      return;
     }
+
+    stations.forEach(st=>{
+      const opt = document.createElement("option");
+      opt.value = st;
+      opt.textContent = st;
+      elSearchStation.appendChild(opt);
+    });
   }
 
   function applyPlan(){
@@ -654,26 +656,22 @@ Tabelle:
     employees = Array.from(new Set(plan.cycle.map(r=>r.mitarbeiter.trim())))
       .sort((a,b)=>normName(a).localeCompare(normName(b)));
 
-    elEmp.innerHTML="";
-    for(const name of employees){
-      const opt=document.createElement("option");
-      opt.value=name; opt.textContent=name;
-      elEmp.appendChild(opt);
-    }
+    // Default: ersten Mitarbeiter auswählen
+    selectedEmployee = employees.length ? employees[0] : null;
+    renderEmployeeButtons();
+    populateStationDropdown();
+    setEnabled(!!plan);
 
-    populateTaktDropdown();
-    setEnabled(true);
-    renderFavbar();
     renderDiagnostics(diag);
 
-    showOk(`Plan angewendet. Wochenübersicht und Takt-Suche sind aktiv.`);
+    showOk(`Plan angewendet. Wochenübersicht und Stations-Suche sind aktiv.`);
   }
 
   function showWeek(){
     if(!plan) throw new Error("Bitte erst Plan anwenden.");
-    const employee = elEmp.value;
-    if(!employee) throw new Error("Bitte Mitarbeiter wählen.");
+    if(!selectedEmployee) throw new Error("Bitte einen Mitarbeiter oben auswählen.");
 
+    const employee = selectedEmployee;
     const mode = elWeekStart.value || "mon";
     const data = plan.weeklyOverview(employee, mode);
     const label = mode === "sun" ? "So–Fr" : "Mo–Fr";
@@ -693,23 +691,22 @@ Tabelle:
     `;
   }
 
-  function searchTakt(){
+  function searchStation(){
     if(!plan) throw new Error("Bitte erst Plan anwenden.");
     const dayKey = elSearchDay.value;
     const roundNo = parseInt(elSearchRound.value, 10);
     const mode = elWeekStart.value || "mon";
 
-    const taktVal = elSearchTakt.value;
-    if(!taktVal){
-      throw new Error("Bitte einen Takt auswählen.");
+    const station = elSearchStation.value;
+    if(!station){
+      throw new Error("Bitte eine Station auswählen.");
     }
-    const taktNo = parseInt(taktVal, 10);
 
-    const hits = plan.findEmployeesByTakt(dayKey, roundNo, taktNo, mode);
+    const hits = plan.findEmployeesByStation(dayKey, roundNo, station, mode);
     const dayName = dayKeyToName(dayKey);
 
     if(!hits.length){
-      showErr(`Kein Mitarbeiter mit Takt ${taktNo} in Runde ${roundNo} am ${dayName} gefunden.`);
+      showErr(`Kein Mitarbeiter mit Station „${station}“ in Runde ${roundNo} am ${dayName} gefunden.`);
       return;
     }
 
@@ -725,7 +722,7 @@ Tabelle:
       <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
         <span class="pill">${dayName}</span>
         <span class="pill">Runde <strong>${roundNo}</strong></span>
-        <span class="pill">Takt <strong>${taktNo}</strong></span>
+        <span class="pill">Station <strong>${station}</strong></span>
       </div>
       <div style="margin-top:10px;">
         ${list}
@@ -806,8 +803,7 @@ Tabelle:
 
     refreshPlanSelect();
     setEnabled(false);
-    populateTaktDropdown();
-    renderFavbar();
+    populateStationDropdown();
   })();
 
   // events
@@ -823,7 +819,9 @@ Tabelle:
     } catch(e){
       plan=null;
       setEnabled(false);
-      populateTaktDropdown();
+      populateStationDropdown();
+      empBar.innerHTML = "";
+      selectedEmployee = null;
       showErr(e.message || String(e));
     }
   });
@@ -834,12 +832,13 @@ Tabelle:
     saveDraft();
     plan=null;
     employees=[];
-    elEmp.innerHTML="";
+    empBar.innerHTML="";
+    selectedEmployee=null;
     setEnabled(false);
     hideWeek();
     elResult.classList.add("hide");
     diagPills.innerHTML="";
-    populateTaktDropdown();
+    populateStationDropdown();
   });
 
   elWeekBtn.addEventListener("click", ()=>{
@@ -850,8 +849,6 @@ Tabelle:
       showErr(e.message || String(e));
     }
   });
-
-  editFavBtn.addEventListener("click", ()=>{ haptic("tap"); editFavs(); });
 
   elSaveNew.addEventListener("click", ()=>{
     try{
@@ -895,15 +892,14 @@ Tabelle:
   elSearchBtn.addEventListener("click", ()=>{
     try{
       haptic("tap");
-      searchTakt();
+      searchStation();
     } catch(e){
       showErr(e.message || String(e));
     }
   });
 
-  [elEmp, elWeekStart].forEach(el=>{
-    el.addEventListener("change", ()=>{ hideWeek(); });
-  });
+  // Änderungen → Woche ausblenden
+  elWeekStart.addEventListener("change", ()=>{ hideWeek(); });
 </script>
 </body>
 </html>
