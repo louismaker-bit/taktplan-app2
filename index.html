@@ -355,7 +355,6 @@ Tabelle:
 
 <script>
   // ---------- constants ----------
-  const DAY_ALIASES = { mo:0, di:1, mi:2, do:3, fr:4, sa:5, so:6 };
   const DAY_KEYS = ["mo","di","mi","do","fr","sa","so"];
   const DAY_NAMES = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 
@@ -407,6 +406,23 @@ Tabelle:
     });
   }
   function loadLastQuery(){ return loadJSON(LAST_QUERY_KEY, null); }
+
+  // Tag-Name aus Key
+  function dayKeyToName(dayKey){
+    const idx = DAY_KEYS.indexOf(dayKey);
+    return DAY_NAMES[idx >= 0 ? idx : 0];
+  }
+
+  // Wichtiger Teil: Index je nach Wochenstart
+  function getDayIndex(dayKey, weekMode){
+    if(weekMode === "sun"){
+      // Sonntag-basierte Reihenfolge: So (0), Mo (1), Di (2), Mi (3), Do (4), Fr (5), Sa (6)
+      const sunOrder = ["so","mo","di","mi","do","fr","sa"];
+      return sunOrder.indexOf(dayKey);
+    }
+    // Standard: Montag-basiert
+    return DAY_KEYS.indexOf(dayKey); // mo=0, di=1, ... so=6
+  }
 
   // ---------- theme/mode/haptics ----------
   function setTheme(theme){
@@ -554,11 +570,14 @@ Tabelle:
         if(!this.startIndex.has(key)) this.startIndex.set(key,i);
       });
     }
-    assignment(employee, dayKey, roundNo){
+    assignment(employee, dayKey, roundNo, weekMode="mon"){
       if(roundNo<1 || roundNo>this.roundsPerDay) throw new Error(`Runde muss 1-${this.roundsPerDay} sein.`);
       const empKey=normName(employee);
       if(!this.startIndex.has(empKey)) throw new Error(`Mitarbeiter '${employee}' nicht im Plan gefunden.`);
-      const d=DAY_ALIASES[dayKey];
+
+      const d = getDayIndex(dayKey, weekMode);
+      if(d < 0) throw new Error(`Ungültiger Tag: ${dayKey}`);
+
       const steps=d*this.roundsPerDay + (roundNo-1);
       const start=this.startIndex.get(empKey);
       const pos=(start+steps)%this.cycle.length;
@@ -571,10 +590,9 @@ Tabelle:
 
       const out=[];
       for(const dayKey of order){
-        const dayIdx = DAY_ALIASES[dayKey];
-        const dayName = DAY_NAMES[dayIdx];
+        const dayName = dayKeyToName(dayKey);
         for(let r=1; r<=this.roundsPerDay; r++){
-          const row=this.assignment(employee, dayKey, r);
+          const row=this.assignment(employee, dayKey, r, mode);
           out.push({ tag: dayName, runde: r, station: row.bezeichnung, takt: row.takt });
         }
       }
@@ -702,9 +720,7 @@ Tabelle:
     nowHint.textContent = `Heute: ${dayName} • Schicht: ${shiftName} • ${info.label}`;
 
     if(plan){
-      try{
-        runSingle(true);
-      } catch {}
+      try{ runSingle(true); } catch {}
     }
 
     saveLastQuery();
@@ -902,9 +918,10 @@ Tabelle:
     const employee = elEmp.value;
     const dayKey = elDay.value;
     const roundNo = parseInt(elRound.value,10);
+    const weekMode = elWeekStart.value || "mon";
 
-    const row = plan.assignment(employee, dayKey, roundNo);
-    const dayName = DAY_NAMES[DAY_ALIASES[dayKey]];
+    const row = plan.assignment(employee, dayKey, roundNo, weekMode);
+    const dayName = dayKeyToName(dayKey);
 
     hideWeek();
 
@@ -1154,11 +1171,16 @@ Tabelle:
     });
   });
 
+  // Änderung Wochenstart → Week-View live aktualisieren
   elWeekStart.addEventListener("change", ()=>{
     if(plan && !elWeek.classList.contains("hide")){
       try{ showWeek(elEmp.value); } catch {}
+    } else if(plan){
+      // auch Einzelausgabe neu, weil sich Rotation verschiebt
+      try{ runSingle(true); } catch {}
     }
   });
 </script>
 </body>
 </html>
+
