@@ -195,16 +195,16 @@
         </div>
       </div>
 
-      <div class="grid2" style="margin-top:10px;">
-        <button class="btn primary" id="weekBtn" type="button" disabled>Wochenübersicht anzeigen</button>
-        <div></div>
+      <!-- Hinweis: kein extra Button mehr, Klick auf Mitarbeiter zeigt Übersicht -->
+      <div class="small" style="margin-top:8px;">
+        Tipp: Einfach auf einen Mitarbeiter tippen – die Wochenübersicht wird automatisch aktualisiert.
       </div>
     </div>
 
     <!-- 2. Wochenübersicht-Tabelle -->
     <div id="week" class="card hide"></div>
 
-    <!-- 3. Takt-/Stations-Suche -->
+    <!-- 3. Stations-Suche -->
     <div class="card">
       <label>Stations-Suche (Tag + Runde + Station → Mitarbeiter)</label>
       <div class="grid2">
@@ -500,9 +500,7 @@ Tabelle:
   const haptOff = document.getElementById("haptOff");
 
   const empBar = document.getElementById("empBar");
-  const elWeekBtn = document.getElementById("weekBtn");
   const elWeekStart = document.getElementById("weekStart");
-
   const elWeek = document.getElementById("week");
 
   const elSearchDay = document.getElementById("searchDay");
@@ -582,7 +580,6 @@ Tabelle:
   }
 
   function setEnabled(on){
-    elWeekBtn.disabled = !on;
     elSearchBtn.disabled = !on;
     elSearchDay.disabled = !on;
     elSearchRound.disabled = !on;
@@ -605,7 +602,11 @@ Tabelle:
         selectedEmployee = name;
         empBar.querySelectorAll("button").forEach(b=>b.classList.remove("active"));
         btn.classList.add("active");
-        hideWeek();
+        try{
+          showWeek();
+        } catch(e){
+          showErr(e.message || String(e));
+        }
       });
       empBar.appendChild(btn);
     });
@@ -656,7 +657,6 @@ Tabelle:
     employees = Array.from(new Set(plan.cycle.map(r=>r.mitarbeiter.trim())))
       .sort((a,b)=>normName(a).localeCompare(normName(b)));
 
-    // Default: ersten Mitarbeiter auswählen
     selectedEmployee = employees.length ? employees[0] : null;
     renderEmployeeButtons();
     populateStationDropdown();
@@ -664,7 +664,7 @@ Tabelle:
 
     renderDiagnostics(diag);
 
-    showOk(`Plan angewendet. Wochenübersicht und Stations-Suche sind aktiv.`);
+    showOk(`Plan angewendet. Mitarbeiter antippen für Wochenübersicht, Stations-Suche ist aktiv.`);
   }
 
   function showWeek(){
@@ -841,15 +841,6 @@ Tabelle:
     populateStationDropdown();
   });
 
-  elWeekBtn.addEventListener("click", ()=>{
-    try{
-      haptic("tap");
-      showWeek();
-    } catch(e){
-      showErr(e.message || String(e));
-    }
-  });
-
   elSaveNew.addEventListener("click", ()=>{
     try{
       haptic("tap");
@@ -898,7 +889,7 @@ Tabelle:
     }
   });
 
-  // Änderungen → Woche ausblenden
+  // Wochenstart-Änderung: nur Ansicht zurücksetzen, neue Übersicht kommt beim nächsten Mitarbeiter-Klick
   elWeekStart.addEventListener("change", ()=>{ hideWeek(); });
 </script>
 </body>
