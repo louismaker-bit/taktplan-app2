@@ -47,7 +47,6 @@
     body{
       margin: 0;
       font-family: var(--sans);
-      /* FIX: remove green radial gradient; keep a subtle blue only */
       background:
         radial-gradient(1200px 600px at 20% -10%, rgba(125,211,252,.14), transparent 60%),
         var(--bg);
@@ -68,7 +67,7 @@
       --accent:#0284c7; --ok:rgba(34,197,94,.14); --err:rgba(239,68,68,.12); --shadow:0 10px 30px rgba(0,0,0,.10);
     }
 
-    /* --------- Topbar (NOT fixed; scroll hides it) --------- */
+    /* --------- Topbar --------- */
     .topbar{
       padding: 12px 14px calc(12px + env(safe-area-inset-top));
       backdrop-filter: blur(14px);
@@ -81,7 +80,7 @@
       display:flex;
       gap:8px;
       align-items:center;
-      flex-wrap: wrap; /* iPhone 14 Pro portrait: wrap */
+      flex-wrap: wrap;
     }
 
     .title{ font-weight: 900; letter-spacing: .2px; }
@@ -175,24 +174,20 @@
 
     .hide{ display:none !important; }
 
-    /* Screenshot-friendly week table */
     table{ width:100%; border-collapse: collapse; margin-top: 10px; }
     th, td{ border-bottom: 1px solid var(--border); padding: 8px 6px; text-align:left; font-size: 14px; }
     th{ color: var(--muted); font-weight: 900; }
 
-    /* tighter week table on mobile so more fits on one screen */
     #week table th, #week table td{ padding: 6px 4px; font-size: 13px; }
     @media (max-width: 420px){
       #week table th, #week table td{ padding: 5px 3px; font-size: 12px; }
     }
 
-    /* Compact mode */
     body.compact .small,
     body.compact .diagnostics,
     body.compact .storageCard,
     body.compact .planSaveCard { display:none !important; }
     body.compact textarea{ min-height: 96px; }
-
   </style>
 </head>
 
@@ -201,7 +196,7 @@
     <div class="topbar-inner">
       <div>
         <div class="title">Taktplan</div>
-        <div class="sub">Offline • Favoriten • Heute/Jetzt • Vergleich • Wochenübersicht</div>
+        <div class="sub">Offline • Favoriten • Heute/Jetzt • Wochenübersicht</div>
       </div>
       <div class="grow"></div>
 
@@ -225,6 +220,7 @@
 
   <div class="wrap">
 
+    <!-- Speicher / Pläne -->
     <div class="card storageCard">
       <label>Gespeicherter Plan (aktiv)</label>
       <div class="grid2">
@@ -237,6 +233,7 @@
       <div class="small">Auto-Save überschreibt den aktiven Plan nach erfolgreichem „Plan anwenden“ (wenn aktiviert).</div>
     </div>
 
+    <!-- Eingabe -->
     <div class="card">
       <div class="grid2">
         <div>
@@ -285,22 +282,20 @@ Tabelle:
           </select>
         </div>
         <div style="display:flex; align-items:flex-end;">
-          <button class="btn" id="applyBtn" type="button">Plan anwenden (manuell)</button>
+          <button class="btn" id="applyBtn" type="button">Plan anwenden</button>
         </div>
       </div>
 
       <div class="diagnostics" id="diagPills"></div>
     </div>
 
+    <!-- Abfrage / Wochenübersicht -->
     <div class="card">
       <div class="grid2">
         <div>
-          <label>Mitarbeiter A</label>
+          <label>Mitarbeiter</label>
           <select id="employee" disabled></select>
           <div class="favbar" id="favbar"></div>
-
-          <label style="margin-top:12px;">Mitarbeiter B (Vergleich)</label>
-          <select id="employee2" disabled></select>
         </div>
 
         <div>
@@ -317,36 +312,35 @@ Tabelle:
 
       <div class="grid2">
         <button class="btn primary" id="queryBtn" type="button" disabled>Abfrage</button>
-        <button class="btn" id="compareBtn" type="button" disabled>Vergleich</button>
+        <button class="btn" id="weekBtn" type="button" disabled>Wochenübersicht</button>
       </div>
 
       <div class="grid2">
-        <button class="btn" id="dayBtn" type="button" disabled>Tagesüberblick</button>
-        <button class="btn" id="weekBtn" type="button" disabled>Wochenübersicht (Mo–Fr)</button>
+        <div>
+          <label>Wochenstart</label>
+          <select id="weekStart">
+            <option value="mon" selected>Mo–Fr</option>
+            <option value="sun">So–Fr</option>
+          </select>
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+          <button class="btn" id="clearBtn" type="button">Eingabe leeren</button>
+        </div>
       </div>
-
-      <div class="grid2">
-        <button class="btn" id="swapBtn" type="button" disabled>Tauschen</button>
-        <button class="btn" id="clearBtn" type="button">Eingabe leeren</button>
-      </div>
-
 
       <div class="grid2">
         <button class="btn" id="editFavBtn" type="button">Favoriten bearbeiten</button>
-        <button class="btn" id="compareBtn" type="button" disabled>Vergleich</button>
       </div>
 
-
       <div class="small" style="margin-top:8px;">
-        Tipp: Wenn „Vergleich“ aktiv ist, aktualisiert sich die Anzeige automatisch bei Änderungen (Tag/Runde/Mitarbeiter).
+        Ablauf: OCR/Tabelle einfügen → „Plan anwenden“ → Mitarbeiter, Tag & Runde wählen → Abfrage oder Wochenübersicht.
       </div>
     </div>
 
     <div id="result" class="card result hide"></div>
     <div id="week" class="card hide"></div>
-    <div id="dayView" class="card hide"></div>
 
-
+    <!-- Plan speichern -->
     <div class="card planSaveCard">
       <label>Plan speichern</label>
       <input id="planName" placeholder="z.B. Standardwoche / Änderung Mittwoch" />
@@ -368,7 +362,7 @@ Tabelle:
   // ---------- storage keys ----------
   const STORAGE_KEY = "taktplan_saved_v5";          // { plans: {id:{name,text,rounds,updatedAt}}, activeId }
   const LAST_DRAFT_KEY = "taktplan_last_draft_v5";  // { text, rounds, autoApply, autoSave, shiftPreset }
-  const LAST_QUERY_KEY = "taktplan_last_query_v5";  // { employee, employee2, day, round, view }
+  const LAST_QUERY_KEY = "taktplan_last_query_v5";  // { employee, day, round }
   const UI_KEY = "taktplan_ui_v3";                  // { theme: auto|dark|light, mode: full|compact, haptics: on|off }
   const FAV_KEY = "taktplan_favs_v2";               // [ "LOUIS", "FLORIAN", ... ]
 
@@ -408,10 +402,8 @@ Tabelle:
   function saveLastQuery(){
     saveJSON(LAST_QUERY_KEY, {
       employee: elEmp.value,
-      employee2: elEmp2.value,
       day: elDay.value,
-      round: elRound.value,
-      view: currentView
+      round: elRound.value
     });
   }
   function loadLastQuery(){ return loadJSON(LAST_QUERY_KEY, null); }
@@ -465,7 +457,6 @@ Tabelle:
     else if(kind === "err") navigator.vibrate([30, 40, 30]);
   }
 
-  // Show helpers with optional haptics (so auto-update doesn't buzz)
   function showOk(html, doHaptic=true){
     if(doHaptic) haptic("ok");
     elResult.classList.remove("hide","err");
@@ -480,7 +471,6 @@ Tabelle:
   }
 
   function hideWeek(){ elWeek.classList.add("hide"); elWeek.innerHTML=""; }
-  function hideDay(){ elDayView.classList.add("hide"); elDayView.innerHTML=""; }
 
   function fillRounds(n){
     elRound.innerHTML = "";
@@ -492,17 +482,13 @@ Tabelle:
   }
   function setEnabled(on){
     elEmp.disabled = !on;
-    elEmp2.disabled = !on;
     elDay.disabled = !on;
-    elDayBtn.disabled = !on;
     elRound.disabled = !on;
     elQuery.disabled = !on;
-    elCompare.disabled = !on;
     elWeekBtn.disabled = !on;
-    elSwap.disabled = !on;
   }
 
-  // ---------- parsing (table + OCR single line) ----------
+  // ---------- parsing ----------
   function parseTable(text){
     const raw=(text||"").trim();
     if(!raw) return [];
@@ -553,7 +539,6 @@ Tabelle:
     return rows;
   }
 
-  // ---------- plan logic ----------
   class TaktPlan{
     constructor(rows, roundsPerDay){
       if(!rows || rows.length===0) throw new Error("Keine gültigen Zeilen erkannt.");
@@ -579,13 +564,18 @@ Tabelle:
       const pos=(start+steps)%this.cycle.length;
       return this.cycle[pos];
     }
-    weeklyOverview(employee, days=5){
+    weeklyOverview(employee, mode="mon"){
+      const order = mode === "sun"
+        ? ["so","mo","di","mi","do","fr"]  // So–Fr
+        : ["mo","di","mi","do","fr"];      // Mo–Fr
+
       const out=[];
-      for(let d=0; d<days; d++){
-        const dayKey = DAY_KEYS[d];
+      for(const dayKey of order){
+        const dayIdx = DAY_ALIASES[dayKey];
+        const dayName = DAY_NAMES[dayIdx];
         for(let r=1; r<=this.roundsPerDay; r++){
           const row=this.assignment(employee, dayKey, r);
-          out.push({ tag: DAY_NAMES[d], runde: r, station: row.bezeichnung, takt: row.takt });
+          out.push({ tag: dayName, runde: r, station: row.bezeichnung, takt: row.takt });
         }
       }
       return out;
@@ -603,14 +593,14 @@ Tabelle:
     return { count: rows.length, uniq: uniq.size, min, max, dups: Array.from(new Set(dups)), missing };
   }
 
-  // ---------- "Heute / Jetzt" logic (fixed schedule, exact :30/:45 starts) ----------
+  // ---------- "Heute / Jetzt" ----------
   function toMin(hh, mm){ return hh*60 + mm; }
   function timeMinNow(){
     const n = new Date();
     return toMin(n.getHours(), n.getMinutes());
   }
   function inRangeHalfOpen(t, start, end){
-    return t >= start && t < end; // [start, end)
+    return t >= start && t < end;
   }
 
   function computeDayKeyNow(){
@@ -633,7 +623,7 @@ Tabelle:
 
   function currentRoundByShift(shift){
     const t = timeMinNow();
-    const breakPolicy = "next"; // per your request
+    const breakPolicy = "next";
 
     let schedule = [];
 
@@ -695,13 +685,12 @@ Tabelle:
 
     const info = currentRoundByShift(shift);
 
-    // Tag bestimmen – bei Nachtschicht nach 00:00 gehört es zum Vortag
     let { dayIndex, dayKey, dayName } = computeDayKeyNow();
     const t = timeMinNow();
-    const nightAfterMidnight = (shift === "night") && (t < toMin(6,11)); // 00:00–06:10
+    const nightAfterMidnight = (shift === "night") && (t < toMin(6,11));
 
     if(nightAfterMidnight){
-      dayIndex = (dayIndex + 6) % 7; // -1 mod 7
+      dayIndex = (dayIndex + 6) % 7;
       dayKey = DAY_KEYS[dayIndex];
       dayName = DAY_NAMES[dayIndex];
     }
@@ -712,9 +701,11 @@ Tabelle:
     const shiftName = (shift==="early") ? "Früh" : (shift==="late" ? "Spät" : "Nacht");
     nowHint.textContent = `Heute: ${dayName} • Schicht: ${shiftName} • ${info.label}`;
 
-    // Auto-refresh current view without buzzing
-    if(currentView==="compare") runCompare(true);
-    else if(currentView==="single") runSingle(true);
+    if(plan){
+      try{
+        runSingle(true);
+      } catch {}
+    }
 
     saveLastQuery();
   }
@@ -738,8 +729,9 @@ Tabelle:
         if(target){
           elEmp.value = target.value;
           hideWeek();
-          hideDay();
-          maybeAutoUpdate();
+          if(plan){
+            try{ runSingle(true); } catch {}
+          }
           saveLastQuery();
         }
       });
@@ -769,18 +761,11 @@ Tabelle:
   const elShift = document.getElementById("shiftPreset");
 
   const elEmp = document.getElementById("employee");
-  const elEmp2 = document.getElementById("employee2");
-
   const elDay = document.getElementById("day");
   const elRound = document.getElementById("round");
   const elQuery = document.getElementById("queryBtn");
-  const elCompare = document.getElementById("compareBtn");
   const elWeekBtn = document.getElementById("weekBtn");
-  const elSwap = document.getElementById("swapBtn");
-  const elClear = document.getElementById("clearBtn");
-
-  const elDayBtn = document.getElementById("dayBtn");
-  const elDayView = document.getElementById("dayView");
+  const elWeekStart = document.getElementById("weekStart");
 
   const elResult = document.getElementById("result");
   const elWeek = document.getElementById("week");
@@ -793,6 +778,7 @@ Tabelle:
   const nowHint = document.getElementById("nowHint");
   const editFavBtn = document.getElementById("editFavBtn");
   const favbar = document.getElementById("favbar");
+  const elClear = document.getElementById("clearBtn");
 
   const themeAuto = document.getElementById("themeAuto");
   const themeDark = document.getElementById("themeDark");
@@ -804,14 +790,6 @@ Tabelle:
 
   let plan = null;
   let applyTimer = null;
-
-  // view state: "single" | "compare"
-  let currentView = "single";
-
-  function setView(v){
-    currentView = v;
-    saveLastQuery();
-  }
 
   function refreshPlanSelect(){
     const state = loadState();
@@ -831,7 +809,7 @@ Tabelle:
       opt.textContent=`${p.name} (${stamp})`;
       elPlanSelect.appendChild(opt);
     }
-    elPlanSelect.value = state.activeId || "";
+    elPlanSelect.value = loadState().activeId || "";
   }
 
   function renderDiagnostics(diag, roundsPerDay){
@@ -854,27 +832,22 @@ Tabelle:
   function applyPlan({silent=false} = {}){
     const text = elTable.value;
     const rpd = parseInt(elRounds.value,10) || 4;
-    hideDay();
     hideWeek();
 
     const rows = parseTable(text);
     const diag = diagnostics(rows);
 
-    plan = new TaktPlan(rows, rpd);
+    const newPlan = new TaktPlan(rows, rpd);
+    plan = newPlan;
 
     const names = Array.from(new Set(plan.cycle.map(r=>r.mitarbeiter.trim())))
       .sort((a,b)=>normName(a).localeCompare(normName(b)));
 
     elEmp.innerHTML="";
-    elEmp2.innerHTML="";
     for(const name of names){
       const optA=document.createElement("option");
       optA.value=name; optA.textContent=name;
       elEmp.appendChild(optA);
-
-      const optB=document.createElement("option");
-      optB.value=name; optB.textContent=name;
-      elEmp2.appendChild(optB);
     }
 
     fillRounds(rpd);
@@ -883,21 +856,12 @@ Tabelle:
     const last = loadLastQuery();
     if(last){
       const targetA = names.find(n=>normName(n)===normName(last.employee));
-      const targetB = names.find(n=>normName(n)===normName(last.employee2));
       if(targetA) elEmp.value = targetA;
-      if(targetB) elEmp2.value = targetB;
       if(last.day) elDay.value = last.day;
       if(last.round) elRound.value = last.round;
-      if(last.view) currentView = last.view;
     }
 
-    if(elEmp2.options.length > 1 && normName(elEmp2.value) === normName(elEmp.value)){
-      const aIdx = elEmp.selectedIndex >= 0 ? elEmp.selectedIndex : 0;
-      const bIdx = (aIdx + 1) % elEmp2.options.length;
-      elEmp2.selectedIndex = bIdx;
-    }
-
-    // Auto-save active plan after successful apply
+    // Auto-save aktiver Plan
     const state = loadState();
     const activeId = state.activeId;
     if(elAutoSave.value==="on" && activeId && state.plans[activeId]){
@@ -909,11 +873,13 @@ Tabelle:
     renderFavbar();
     renderDiagnostics(diag, rpd);
 
-    if(currentView === "compare") runCompare(true);
-    else if(currentView === "single") runSingle(true);
+    // nach Apply direkt letzte Abfrage nachziehen, wenn möglich
+    if(plan && elEmp.value){
+      try{ runSingle(true); } catch {}
+    }
 
     if(!silent){
-      showOk(`Plan angewendet. Du kannst jetzt abfragen, vergleichen oder „Heute/Jetzt“ nutzen.`, true);
+      showOk(`Plan angewendet. Du kannst jetzt abfragen oder die Wochenübersicht anzeigen.`, true);
     }
   }
 
@@ -925,12 +891,11 @@ Tabelle:
         if(!elTable.value.trim()) return;
         applyPlan({silent:true});
       } catch(e){
-        // silent on auto-apply
+        // silent
       }
     }, 600);
   }
 
-  // ---------- compare ----------
   function runSingle(auto=false){
     if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
 
@@ -942,7 +907,6 @@ Tabelle:
     const dayName = DAY_NAMES[DAY_ALIASES[dayKey]];
 
     hideWeek();
-    hideDay();
 
     showOk(`
       <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
@@ -956,160 +920,17 @@ Tabelle:
     `, !auto);
   }
 
-  function runCompare(auto=false){
-    if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
-
-    const employeeA = elEmp.value;
-    const employeeB = elEmp2.value;
-    const dayKey = elDay.value;
-    const roundNo = parseInt(elRound.value,10);
-
-    const rowA = plan.assignment(employeeA, dayKey, roundNo);
-    const rowB = plan.assignment(employeeB, dayKey, roundNo);
-    const dayName = DAY_NAMES[DAY_ALIASES[dayKey]];
-
-    hideWeek();
-
-    const same = (normName(rowA.bezeichnung) === normName(rowB.bezeichnung)) && (rowA.takt === rowB.takt);
-
-    showOk(`
-      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-        <span class="pill">${dayName}</span>
-        <span class="pill">Runde <strong>${roundNo}</strong></span>
-        ${same ? `<span class="pill"><strong>Gleich</strong></span>` : `<span class="pill">Unterschied</span>`}
-        ${auto ? `<span class="pill">Auto</span>` : ``}
-      </div>
-
-      <div style="margin-top:12px; display:grid; gap:10px;">
-        <div style="padding:12px; border:1px solid var(--border); border-radius:14px; background: var(--card);">
-          <div style="font-weight:900; margin-bottom:6px;">${employeeA}</div>
-          <div style="font-size:20px; font-weight:900;">${rowA.bezeichnung}</div>
-          <div class="mono" style="margin-top:6px; color: var(--muted);">Takt ${rowA.takt}</div>
-        </div>
-
-        <div style="padding:12px; border:1px solid var(--border); border-radius:14px; background: var(--card);">
-          <div style="font-weight:900; margin-bottom:6px;">${employeeB}</div>
-          <div style="font-size:20px; font-weight:900;">${rowB.bezeichnung}</div>
-          <div class="mono" style="margin-top:6px; color: var(--muted);">Takt ${rowB.takt}</div>
-        </div>
-      </div>
-    `, !auto);
-  }
-
-  function maybeAutoUpdate(){
-    if(!plan) return;
-    try{
-      if(currentView==="compare") runCompare(true);
-      else runSingle(true);
-    } catch(e){
-      // ignore on auto-update
-    }
-  }
-
-  // ---------- plan save/load ----------
-  function saveNewPlan(){
-    const name=(elPlanName.value||"").trim();
-    if(!name) throw new Error("Bitte einen Namen eingeben (z.B. 'Standardwoche').");
-    const text=elTable.value;
-    const rounds=parseInt(elRounds.value,10) || 4;
-    if(!text.trim()) throw new Error("Plan-Text ist leer.");
-
-    const rows=parseTable(text);
-    new TaktPlan(rows, rounds);
-
-    const state=loadState();
-    const id=uid();
-    state.plans[id]={ name, text, rounds, updatedAt: nowISO() };
-    state.activeId=id;
-    saveState(state);
-    refreshPlanSelect();
-  }
-
-  function overwriteActivePlan(){
-    const state=loadState();
-    const id=state.activeId;
-    if(!id || !state.plans[id]) throw new Error("Kein aktiver Plan ausgewählt.");
-    const text=elTable.value;
-    const rounds=parseInt(elRounds.value,10) || 4;
-    if(!text.trim()) throw new Error("Plan-Text ist leer.");
-
-    const rows=parseTable(text);
-    new TaktPlan(rows, rounds);
-
-    state.plans[id]={ ...state.plans[id], text, rounds, updatedAt: nowISO() };
-    saveState(state);
-    refreshPlanSelect();
-  }
-
-  function loadSelectedPlan(){
-    const state=loadState();
-    const id=elPlanSelect.value;
-    if(!id || !state.plans[id]) throw new Error("Kein gespeicherter Plan ausgewählt.");
-    const p=state.plans[id];
-
-    elTable.value=p.text || "";
-    elRounds.value=p.rounds || 4;
-    saveDraft();
-
-    state.activeId=id;
-    saveState(state);
-    refreshPlanSelect();
-
-    applyPlan({silent:false});
-    showOk(`Plan geladen & angewendet: <strong>${p.name}</strong>`, true);
-  }
-
-  function deleteSelectedPlan(){
-    const state=loadState();
-    const id=elPlanSelect.value;
-    if(!id || !state.plans[id]) throw new Error("Kein gespeicherter Plan ausgewählt.");
-    const name=state.plans[id].name || id;
-
-    delete state.plans[id];
-    if(state.activeId===id) state.activeId=null;
-    saveState(state);
-    refreshPlanSelect();
-
-    showOk(`Plan gelöscht: <strong>${name}</strong>`, true);
-  }
-
-  // ---------- week view ----------
-  function showDay(employee, dayKey){
-    if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
-
-    const dIdx = DAY_ALIASES[dayKey];
-    const dayName = DAY_NAMES[dIdx];
-
-    const data = [];
-    for(let r=1; r<=plan.roundsPerDay; r++){
-      const row = plan.assignment(employee, dayKey, r);
-      data.push({ runde:r, station: row.bezeichnung, takt: row.takt });
-    }
-
-    elDayView.classList.remove("hide");
-    elDayView.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-        <div style="font-weight:900;">Tagesüberblick: ${employee}</div>
-        <div class="small">${dayName} • Runden: ${plan.roundsPerDay}</div>
-      </div>
-      <table>
-        <thead><tr><th>R</th><th>Station</th><th>Takt</th></tr></thead>
-        <tbody>
-          ${data.map(r=>`<tr><td>${r.runde}</td><td>${r.station}</td><td class="mono">${r.takt}</td></tr>`).join("")}
-        </tbody>
-      </table>
-    `;
-  }
-
   function showWeek(employee){
     if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
 
-    const data = plan.weeklyOverview(employee, 5);
+    const mode = elWeekStart.value || "mon";
+    const data = plan.weeklyOverview(employee, mode);
+    const label = mode === "sun" ? "So–Fr" : "Mo–Fr";
 
     elWeek.classList.remove("hide");
     elWeek.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-        <div style="font-weight:900;">Wochenübersicht (Mo–Fr): ${employee}</div>
+        <div style="font-weight:900;">Wochenübersicht (${label}): ${employee}</div>
         <div class="small">Runden/Tag: ${plan.roundsPerDay}</div>
       </div>
       <table>
@@ -1136,9 +957,6 @@ Tabelle:
       if(draft.autoSave) elAutoSave.value = draft.autoSave;
       if(draft.shiftPreset) elShift.value = draft.shiftPreset;
     }
-
-    const last = loadLastQuery();
-    if(last && last.view) currentView = last.view;
 
     refreshPlanSelect();
     setEnabled(false);
@@ -1190,7 +1008,6 @@ Tabelle:
   elQuery.addEventListener("click", ()=>{
     try{
       haptic("tap");
-      setView("single");
       runSingle(false);
       saveLastQuery();
     } catch(e){
@@ -1198,66 +1015,9 @@ Tabelle:
     }
   });
 
-  elCompare.addEventListener("click", ()=>{
-    try{
-      haptic("tap");
-      setView("compare");
-      runCompare(false);
-      saveLastQuery();
-    } catch(e){
-      showErr(e.message || String(e), true);
-    }
-  });
-
-  elDayBtn.addEventListener("click", ()=>{
-  try{
-    haptic("tap");
-    setView("single");
-    hideWeek();
-    const employee = elEmp.value;
-    const dayKey = elDay.value;
-    showDay(employee, dayKey);
-    saveLastQuery();
-  } catch(e){
-    showErr(e.message || String(e), true);
-  }
-});
-
-  elSwap.addEventListener("click", ()=>{
-  try{
-    haptic("tap");
-    const a = elEmp.value;
-    const b = elEmp2.value;
-    elEmp.value = b;
-    elEmp2.value = a;
-
-    // Falls eine Übersicht offen ist: neu rendern
-    const dayOpen = !elDayView.classList.contains("hide");
-    const weekOpen = !elWeek.classList.contains("hide");
-
-    if(weekOpen){
-      hideDay();
-      showWeek(elEmp.value);
-    } else if(dayOpen){
-      hideWeek();
-      showDay(elEmp.value, elDay.value);
-    } else {
-      hideWeek();
-      hideDay();
-      maybeAutoUpdate();
-    }
-
-    saveLastQuery();
-    showOk("Mitarbeiter A und B getauscht.", true);
-  } catch(e){
-    showErr(e.message || String(e), true);
-  }
-});
-
   elWeekBtn.addEventListener("click", ()=>{
     try{
       haptic("tap");
-      setView("single");
       const employee = elEmp.value;
       showWeek(employee);
       saveLastQuery();
@@ -1273,7 +1033,6 @@ Tabelle:
     plan=null;
     setEnabled(false);
     hideWeek();
-    hideDay();
     diagPills.innerHTML="";
     showOk("Eingabe geleert.", true);
   });
@@ -1290,6 +1049,40 @@ Tabelle:
       showErr(e.message || String(e), true);
     }
   });
+
+  function saveNewPlan(){
+    const name=(elPlanName.value||"").trim();
+    if(!name) throw new Error("Bitte einen Namen eingeben (z.B. 'Standardwoche').");
+    const text=elTable.value;
+    const rounds=parseInt(elRounds.value,10) || 4;
+    if(!text.trim()) throw new Error("Plan-Text ist leer.");
+
+    const rows=parseTable(text);
+    new TaktPlan(rows, rounds);
+
+    const state=loadState();
+    const id=uid();
+    state.plans[id]={ name, text, rounds, updatedAt: nowISO() };
+    state.activeId=id;
+    saveState(state);
+    refreshPlanSelect();
+  }
+
+  function overwriteActivePlan(){
+    const state=loadState();
+    const id=state.activeId;
+    if(!id || !state.plans[id]) throw new Error("Kein aktiver Plan ausgewählt.");
+    const text=elTable.value;
+    const rounds=parseInt(elRounds.value,10) || 4;
+    if(!text.trim()) throw new Error("Plan-Text ist leer.");
+
+    const rows=parseTable(text);
+    new TaktPlan(rows, rounds);
+
+    state.plans[id]={ ...state.plans[id], text, rounds, updatedAt: nowISO() };
+    saveState(state);
+    refreshPlanSelect();
+  }
 
   elOverwriteActive.addEventListener("click", ()=>{
     try{
@@ -1319,15 +1112,53 @@ Tabelle:
     }
   });
 
-  // Auto-update hooks
-  [elEmp, elEmp2, elDay, elRound].forEach(el=>{
+  function loadSelectedPlan(){
+    const state=loadState();
+    const id=elPlanSelect.value;
+    if(!id || !state.plans[id]) throw new Error("Kein gespeicherter Plan ausgewählt.");
+    const p=state.plans[id];
+
+    elTable.value=p.text || "";
+    elRounds.value=p.rounds || 4;
+    saveDraft();
+
+    state.activeId=id;
+    saveState(state);
+    refreshPlanSelect();
+
+    applyPlan({silent:false});
+    showOk(`Plan geladen & angewendet: <strong>${p.name}</strong>`, true);
+  }
+
+  function deleteSelectedPlan(){
+    const state=loadState();
+    const id=elPlanSelect.value;
+    if(!id || !state.plans[id]) throw new Error("Kein gespeicherter Plan ausgewählt.");
+    const name=state.plans[id].name || id;
+
+    delete state.plans[id];
+    if(state.activeId===id) state.activeId=null;
+    saveState(state);
+    refreshPlanSelect();
+
+    showOk(`Plan gelöscht: <strong>${name}</strong>`, true);
+  }
+
+  // Änderungen an Mitarbeiter/Tag/Runde → Auto-Update
+  [elEmp, elDay, elRound].forEach(el=>{
     el.addEventListener("change", ()=>{
       saveLastQuery();
-      maybeAutoUpdate();
+      if(plan){
+        try{ runSingle(true); } catch {}
+      }
     });
+  });
+
+  elWeekStart.addEventListener("change", ()=>{
+    if(plan && !elWeek.classList.contains("hide")){
+      try{ showWeek(elEmp.value); } catch {}
+    }
   });
 </script>
 </body>
 </html>
-
-
