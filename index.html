@@ -173,37 +173,7 @@
 
   <div class="wrap">
 
-    <!-- Speicher / Pläne -->
-    <div class="card">
-      <label>Gespeicherter Plan (aktiv)</label>
-      <div class="grid2">
-        <select id="planSelect"></select>
-        <div class="grid2">
-          <button class="btn" id="loadSaved" type="button">Laden</button>
-          <button class="btn" id="deleteSaved" type="button">Löschen</button>
-        </div>
-      </div>
-      <div class="small">Gespeicherte Pläne bleiben auf diesem Gerät. „Plan anwenden“ nutzt immer den aktuell sichtbaren Text.</div>
-    </div>
-
-    <!-- Eingabe -->
-    <div class="card">
-      <label>Plan einfügen (OCR oder Tabelle)</label>
-      <textarea id="table" placeholder="OCR:
-1 Airbag LISA 2 Bepl. Re. BESETZT ...
-
-Tabelle:
-1;Airbag;LISA"></textarea>
-
-      <div class="grid2" style="margin-top:10px;">
-        <button class="btn primary" id="applyBtn" type="button">Plan anwenden</button>
-        <button class="btn" id="clearBtn" type="button">Eingabe leeren</button>
-      </div>
-
-      <div id="diagPills" class="diagnostics"></div>
-    </div>
-
-    <!-- Wochenübersicht -->
+    <!-- Wochenübersicht (Mitarbeiter oben) -->
     <div class="card">
       <div class="grid2">
         <div>
@@ -225,11 +195,10 @@ Tabelle:
         <button class="btn primary" id="weekBtn" type="button" disabled>Wochenübersicht anzeigen</button>
         <button class="btn" id="editFavBtn" type="button">Favoriten bearbeiten</button>
       </div>
-
-      <div class="small" style="margin-top:8px;">
-        Ablauf: OCR/Tabelle einfügen → „Plan anwenden“ → Mitarbeiter wählen → Wochenstart wählen → Wochenübersicht.
-      </div>
     </div>
+
+    <!-- Wochenübersicht-Tabelle -->
+    <div id="week" class="card hide"></div>
 
     <!-- Takt-Suche -->
     <div class="card">
@@ -256,7 +225,9 @@ Tabelle:
       <div class="grid2" style="margin-top:10px;">
         <div>
           <label>Takt</label>
-          <input id="searchTakt" type="number" min="1" placeholder="z.B. 15" />
+          <select id="searchTakt">
+            <!-- wird nach Plan anwenden befüllt -->
+          </select>
         </div>
         <div style="display:flex; align-items:flex-end;">
           <button class="btn primary" id="searchBtn" type="button" disabled>Wer hat diesen Takt?</button>
@@ -264,13 +235,12 @@ Tabelle:
       </div>
 
       <div class="small" style="margin-top:8px;">
-        Wochenstart-Einstellung (oben) wirkt auch hier: Bei So–Fr beginnt die Rotation am Sonntag mit Runde 1.
+        Hinweis: Wochenstart-Einstellung wirkt auch hier (So–Fr verschiebt den Rotationsbeginn auf Sonntag Runde 1).
       </div>
     </div>
 
-    <!-- Ergebnisse -->
+    <!-- Ergebnis-Box -->
     <div id="result" class="card result hide"></div>
-    <div id="week" class="card hide"></div>
 
     <!-- Plan speichern -->
     <div class="card">
@@ -282,20 +252,53 @@ Tabelle:
       </div>
     </div>
 
+    <!-- Statuszeile aktiver Plan -->
+    <div class="card">
+      <div id="activeStatus" class="small">Aktiver Plan: keiner</div>
+    </div>
+
+    <!-- Gespeicherter Plan -->
+    <div class="card">
+      <label>Gespeicherter Plan</label>
+      <div class="grid2">
+        <select id="planSelect"></select>
+        <div class="grid2">
+          <button class="btn" id="loadSaved" type="button">Laden</button>
+          <button class="btn" id="deleteSaved" type="button">Löschen</button>
+        </div>
+      </div>
+      <div class="small">Gespeicherte Pläne bleiben auf diesem Gerät.</div>
+    </div>
+
+    <!-- Plan einfügen (OCR/Tabelle) GANZ unten -->
+    <div class="card">
+      <label>Plan einfügen (OCR oder Tabelle)</label>
+      <textarea id="table" placeholder="OCR:
+1 Airbag LISA 2 Bepl. Re. BESETZT ...
+
+Tabelle:
+1;Airbag;LISA"></textarea>
+
+      <div class="grid2" style="margin-top:10px;">
+        <button class="btn primary" id="applyBtn" type="button">Plan anwenden</button>
+        <button class="btn" id="clearBtn" type="button">Eingabe leeren</button>
+      </div>
+
+      <div id="diagPills" class="diagnostics" style="margin-top:8px;"></div>
+    </div>
+
   </div>
 
 <script>
-  // ---------- constants ----------
   const ROUNDS_PER_DAY = 4;
   const DAY_KEYS = ["mo","di","mi","do","fr","sa","so"];
   const DAY_NAMES = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 
   const STORAGE_KEY = "taktplan_saved_v6";
   const DRAFT_KEY   = "taktplan_draft_v1";
-  const UI_KEY      = "taktplan_ui_v4";      // nur haptics
+  const UI_KEY      = "taktplan_ui_v4";
   const FAV_KEY     = "taktplan_favs_v2";
 
-  // ---------- helpers ----------
   function normName(s){ return (s || "").trim().replace(/\s+/g," ").toUpperCase(); }
   function nowISO(){ return new Date().toISOString(); }
   function uid(){ return "p_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16); }
@@ -335,7 +338,7 @@ Tabelle:
     return DAY_KEYS.indexOf(dayKey); // mo=0..so=6
   }
 
-  // ---------- haptics ----------
+  // Haptik
   function setHaptics(v){
     const ui = loadJSON(UI_KEY, { haptics:"on" });
     ui.haptics = v;
@@ -369,7 +372,7 @@ Tabelle:
   }
   function hideWeek(){ elWeek.classList.add("hide"); elWeek.innerHTML=""; }
 
-  // ---------- parsing ----------
+  // Parsing
   function parseTable(text){
     const raw=(text||"").trim();
     if(!raw) return [];
@@ -491,7 +494,7 @@ Tabelle:
     return { count: rows.length, uniq: uniq.size, min, max, dups: Array.from(new Set(dups)), missing };
   }
 
-  // ---------- favorites ----------
+  // Favoriten
   function loadFavs(){ return loadJSON(FAV_KEY, []); }
   function saveFavs(favs){ saveJSON(FAV_KEY, favs); }
 
@@ -525,9 +528,31 @@ Tabelle:
     renderFavbar();
   }
 
-  // ---------- UI elements ----------
+  // DOM-Refs
   const haptOn = document.getElementById("haptOn");
   const haptOff = document.getElementById("haptOff");
+
+  const elEmployeeCard = null;
+  const elEmp = document.getElementById("employee");
+  const elWeekBtn = document.getElementById("weekBtn");
+  const elWeekStart = document.getElementById("weekStart");
+  const editFavBtn = document.getElementById("editFavBtn");
+  const favbar = document.getElementById("favbar");
+
+  const elWeek = document.getElementById("week");
+
+  const elSearchDay = document.getElementById("searchDay");
+  const elSearchRound = document.getElementById("searchRound");
+  const elSearchTakt = document.getElementById("searchTakt");
+  const elSearchBtn = document.getElementById("searchBtn");
+
+  const elResult = document.getElementById("result");
+
+  const elPlanName = document.getElementById("planName");
+  const elSaveNew = document.getElementById("saveNew");
+  const elOverwriteActive = document.getElementById("overwriteActive");
+
+  const elActiveStatus = document.getElementById("activeStatus");
 
   const elPlanSelect = document.getElementById("planSelect");
   const elLoadSaved = document.getElementById("loadSaved");
@@ -536,28 +561,21 @@ Tabelle:
   const elTable = document.getElementById("table");
   const elApplyBtn = document.getElementById("applyBtn");
   const elClear = document.getElementById("clearBtn");
-
-  const elEmp = document.getElementById("employee");
-  const elWeekBtn = document.getElementById("weekBtn");
-  const elWeekStart = document.getElementById("weekStart");
-  const editFavBtn = document.getElementById("editFavBtn");
-  const favbar = document.getElementById("favbar");
-
-  const elSearchDay = document.getElementById("searchDay");
-  const elSearchRound = document.getElementById("searchRound");
-  const elSearchTakt = document.getElementById("searchTakt");
-  const elSearchBtn = document.getElementById("searchBtn");
-
-  const elResult = document.getElementById("result");
-  const elWeek = document.getElementById("week");
   const diagPills = document.getElementById("diagPills");
-
-  const elPlanName = document.getElementById("planName");
-  const elSaveNew = document.getElementById("saveNew");
-  const elOverwriteActive = document.getElementById("overwriteActive");
 
   let plan = null;
   let employees = [];
+
+  function updateActiveStatus(){
+    const state = loadState();
+    let text = "Aktiver Plan: keiner";
+    if(state.activeId && state.plans[state.activeId]){
+      const p = state.plans[state.activeId];
+      const stamp = p.updatedAt ? p.updatedAt.slice(0,16).replace("T"," ") : "";
+      text = `Aktiver Plan: ${p.name} ${stamp ? "(" + stamp + ")" : ""}`;
+    }
+    elActiveStatus.textContent = text;
+  }
 
   function refreshPlanSelect(){
     const state = loadState();
@@ -578,6 +596,7 @@ Tabelle:
       elPlanSelect.appendChild(opt);
     }
     elPlanSelect.value = loadState().activeId || "";
+    updateActiveStatus();
   }
 
   function renderDiagnostics(diag){
@@ -601,6 +620,24 @@ Tabelle:
     elEmp.disabled = !on;
     elWeekBtn.disabled = !on;
     elSearchBtn.disabled = !on;
+    elSearchTakt.disabled = !on;
+  }
+
+  function populateTaktDropdown(){
+    elSearchTakt.innerHTML = "";
+    if(!plan){
+      const opt = document.createElement("option");
+      opt.value = ""; opt.textContent = "Kein Plan";
+      elSearchTakt.appendChild(opt);
+      return;
+    }
+    const takts = Array.from(new Set(plan.rows.map(r=>r.takt))).sort((a,b)=>a-b);
+    for(const t of takts){
+      const opt = document.createElement("option");
+      opt.value = String(t);
+      opt.textContent = String(t);
+      elSearchTakt.appendChild(opt);
+    }
   }
 
   function applyPlan(){
@@ -624,11 +661,12 @@ Tabelle:
       elEmp.appendChild(opt);
     }
 
+    populateTaktDropdown();
     setEnabled(true);
     renderFavbar();
     renderDiagnostics(diag);
 
-    showOk(`Plan angewendet. Mitarbeiter-Listen & Takt-Suche sind aktiv.`);
+    showOk(`Plan angewendet. Wochenübersicht und Takt-Suche sind aktiv.`);
   }
 
   function showWeek(){
@@ -659,15 +697,13 @@ Tabelle:
     if(!plan) throw new Error("Bitte erst Plan anwenden.");
     const dayKey = elSearchDay.value;
     const roundNo = parseInt(elSearchRound.value, 10);
-    const taktNo = parseInt(elSearchTakt.value, 10);
     const mode = elWeekStart.value || "mon";
 
-    if(!taktNo || Number.isNaN(taktNo)) throw new Error("Bitte einen gültigen Takt eingeben.");
-
-    if(taktNo < plan.minTakt || taktNo > plan.maxTakt){
-      showErr(`Takt ${taktNo} liegt außerhalb des Planbereichs (${plan.minTakt}–${plan.maxTakt}).`);
-      return;
+    const taktVal = elSearchTakt.value;
+    if(!taktVal){
+      throw new Error("Bitte einen Takt auswählen.");
     }
+    const taktNo = parseInt(taktVal, 10);
 
     const hits = plan.findEmployeesByTakt(dayKey, roundNo, taktNo, mode);
     const dayName = dayKeyToName(dayKey);
@@ -760,7 +796,7 @@ Tabelle:
     showOk(`Plan gelöscht: <strong>${name}</strong>`);
   }
 
-  // ---------- init ----------
+  // init
   (function init(){
     const ui = loadJSON(UI_KEY, { haptics:"on" });
     setHaptics(ui.haptics || "on");
@@ -770,10 +806,11 @@ Tabelle:
 
     refreshPlanSelect();
     setEnabled(false);
+    populateTaktDropdown();
     renderFavbar();
   })();
 
-  // ---------- events ----------
+  // events
   haptOn.addEventListener("click", ()=>{ setHaptics("on"); haptic("tap"); });
   haptOff.addEventListener("click", ()=>{ setHaptics("off"); });
 
@@ -786,6 +823,7 @@ Tabelle:
     } catch(e){
       plan=null;
       setEnabled(false);
+      populateTaktDropdown();
       showErr(e.message || String(e));
     }
   });
@@ -801,6 +839,7 @@ Tabelle:
     hideWeek();
     elResult.classList.add("hide");
     diagPills.innerHTML="";
+    populateTaktDropdown();
   });
 
   elWeekBtn.addEventListener("click", ()=>{
@@ -862,7 +901,6 @@ Tabelle:
     }
   });
 
-  // Wenn Mitarbeiter / Wochenstart geändert → Wochenübersicht ausblenden
   [elEmp, elWeekStart].forEach(el=>{
     el.addEventListener("change", ()=>{ hideWeek(); });
   });
