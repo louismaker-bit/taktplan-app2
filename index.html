@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Taktplan</title>
   <style>
-    /* iOS overscroll / background artifacts */
     html, body{
       height: 100%;
       overscroll-behavior: none;
@@ -29,21 +28,6 @@
       --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     }
 
-    @media (prefers-color-scheme: light){
-      :root{
-        --bg: #f6f7fb;
-        --card: rgba(255,255,255,.9);
-        --card2: rgba(255,255,255,.96);
-        --text: rgba(10,12,16,.92);
-        --muted: rgba(10,12,16,.62);
-        --border: rgba(10,12,16,.12);
-        --accent: #0284c7;
-        --ok: rgba(34,197,94,.14);
-        --err: rgba(239,68,68,.12);
-        --shadow: 0 10px 30px rgba(0,0,0,.10);
-      }
-    }
-
     body{
       margin: 0;
       font-family: var(--sans);
@@ -56,18 +40,6 @@
       padding-bottom: 28px;
     }
 
-    body.force-dark{
-      --bg:#0b0c10; --card:rgba(255,255,255,.06); --card2:rgba(255,255,255,.08);
-      --text:rgba(255,255,255,.92); --muted:rgba(255,255,255,.62); --border:rgba(255,255,255,.14);
-      --accent:#7dd3fc; --ok:rgba(34,197,94,.16); --err:rgba(239,68,68,.18); --shadow:0 10px 30px rgba(0,0,0,.35);
-    }
-    body.force-light{
-      --bg:#f6f7fb; --card:rgba(255,255,255,.92); --card2:rgba(255,255,255,.98);
-      --text:rgba(10,12,16,.92); --muted:rgba(10,12,16,.62); --border:rgba(10,12,16,.12);
-      --accent:#0284c7; --ok:rgba(34,197,94,.14); --err:rgba(239,68,68,.12); --shadow:0 10px 30px rgba(0,0,0,.10);
-    }
-
-    /* --------- Topbar --------- */
     .topbar{
       padding: 12px 14px calc(12px + env(safe-area-inset-top));
       backdrop-filter: blur(14px);
@@ -82,7 +54,6 @@
       align-items:center;
       flex-wrap: wrap;
     }
-
     .title{ font-weight: 900; letter-spacing: .2px; }
     .sub{ font-size: 12px; color: var(--muted); margin-top: 2px; }
     .grow{ flex: 1; }
@@ -182,12 +153,6 @@
     @media (max-width: 420px){
       #week table th, #week table td{ padding: 5px 3px; font-size: 12px; }
     }
-
-    body.compact .small,
-    body.compact .diagnostics,
-    body.compact .storageCard,
-    body.compact .planSaveCard { display:none !important; }
-    body.compact textarea{ min-height: 96px; }
   </style>
 </head>
 
@@ -196,21 +161,9 @@
     <div class="topbar-inner">
       <div>
         <div class="title">Taktplan</div>
-        <div class="sub">Offline • Favoriten • Heute/Jetzt • Wochenübersicht</div>
+        <div class="sub">Offline • Wochenübersicht • Takt-Suche</div>
       </div>
       <div class="grow"></div>
-
-      <div class="seg" aria-label="Theme">
-        <button id="themeAuto" class="active" type="button">Auto</button>
-        <button id="themeDark" type="button">Dark</button>
-        <button id="themeLight" type="button">Light</button>
-      </div>
-
-      <div class="seg" aria-label="Mode">
-        <button id="modeFull" class="active" type="button">Full</button>
-        <button id="modeCompact" type="button">Kompakt</button>
-      </div>
-
       <div class="seg" aria-label="Haptik">
         <button id="haptOn" class="active" type="button">Haptik</button>
         <button id="haptOff" type="button">Aus</button>
@@ -221,7 +174,7 @@
   <div class="wrap">
 
     <!-- Speicher / Pläne -->
-    <div class="card storageCard">
+    <div class="card">
       <label>Gespeicherter Plan (aktiv)</label>
       <div class="grid2">
         <select id="planSelect"></select>
@@ -230,28 +183,11 @@
           <button class="btn" id="deleteSaved" type="button">Löschen</button>
         </div>
       </div>
-      <div class="small">Auto-Save überschreibt den aktiven Plan nach erfolgreichem „Plan anwenden“ (wenn aktiviert).</div>
+      <div class="small">Gespeicherte Pläne bleiben auf diesem Gerät. „Plan anwenden“ nutzt immer den aktuell sichtbaren Text.</div>
     </div>
 
     <!-- Eingabe -->
     <div class="card">
-      <div class="grid2">
-        <div>
-          <label>Heute / Jetzt</label>
-          <button class="btn primary" id="nowBtn" type="button">Heute + aktuelle Runde setzen</button>
-          <div class="small" id="nowHint" style="margin-top:8px;"></div>
-        </div>
-        <div>
-          <label>Schicht (für „Jetzt“)</label>
-          <select id="shiftPreset">
-            <option value="early">Früh (06:30–14:29)</option>
-            <option value="late">Spät (14:30–22:29)</option>
-            <option value="night">Nacht (22:30–06:10)</option>
-          </select>
-          <div class="small" style="margin-top:8px;">In Pausen wird automatisch die <strong>nächste</strong> Runde gesetzt.</div>
-        </div>
-      </div>
-
       <label>Plan einfügen (OCR oder Tabelle)</label>
       <textarea id="table" placeholder="OCR:
 1 Airbag LISA 2 Bepl. Re. BESETZT ...
@@ -259,63 +195,23 @@
 Tabelle:
 1;Airbag;LISA"></textarea>
 
-      <div class="grid2">
-        <div>
-          <label>Runden pro Tag</label>
-          <input id="rounds" type="number" min="1" max="12" value="4" />
-        </div>
-        <div>
-          <label>Auto-Apply</label>
-          <select id="autoApply">
-            <option value="on" selected>EIN</option>
-            <option value="off">AUS</option>
-          </select>
-        </div>
+      <div class="grid2" style="margin-top:10px;">
+        <button class="btn primary" id="applyBtn" type="button">Plan anwenden</button>
+        <button class="btn" id="clearBtn" type="button">Eingabe leeren</button>
       </div>
 
-      <div class="grid2">
-        <div>
-          <label>Auto-Save (aktiver Plan)</label>
-          <select id="autoSave">
-            <option value="on" selected>EIN</option>
-            <option value="off">AUS</option>
-          </select>
-        </div>
-        <div style="display:flex; align-items:flex-end;">
-          <button class="btn" id="applyBtn" type="button">Plan anwenden</button>
-        </div>
-      </div>
-
-      <div class="diagnostics" id="diagPills"></div>
+      <div id="diagPills" class="diagnostics"></div>
     </div>
 
-    <!-- Abfrage / Wochenübersicht -->
+    <!-- Wochenübersicht -->
     <div class="card">
       <div class="grid2">
         <div>
-          <label>Mitarbeiter</label>
+          <label>Mitarbeiter (für Wochenübersicht)</label>
           <select id="employee" disabled></select>
           <div class="favbar" id="favbar"></div>
         </div>
 
-        <div>
-          <label>Tag</label>
-          <select id="day" disabled>
-            <option value="mo">Mo</option><option value="di">Di</option><option value="mi">Mi</option>
-            <option value="do">Do</option><option value="fr">Fr</option><option value="sa">Sa</option><option value="so">So</option>
-          </select>
-
-          <label>Runde</label>
-          <select id="round" disabled></select>
-        </div>
-      </div>
-
-      <div class="grid2">
-        <button class="btn primary" id="queryBtn" type="button" disabled>Abfrage</button>
-        <button class="btn" id="weekBtn" type="button" disabled>Wochenübersicht</button>
-      </div>
-
-      <div class="grid2">
         <div>
           <label>Wochenstart</label>
           <select id="weekStart">
@@ -323,47 +219,81 @@ Tabelle:
             <option value="sun">So–Fr</option>
           </select>
         </div>
-        <div style="display:flex; align-items:flex-end;">
-          <button class="btn" id="clearBtn" type="button">Eingabe leeren</button>
-        </div>
       </div>
 
-      <div class="grid2">
+      <div class="grid2" style="margin-top:10px;">
+        <button class="btn primary" id="weekBtn" type="button" disabled>Wochenübersicht anzeigen</button>
         <button class="btn" id="editFavBtn" type="button">Favoriten bearbeiten</button>
       </div>
 
       <div class="small" style="margin-top:8px;">
-        Ablauf: OCR/Tabelle einfügen → „Plan anwenden“ → Mitarbeiter, Tag & Runde wählen → Abfrage oder Wochenübersicht.
+        Ablauf: OCR/Tabelle einfügen → „Plan anwenden“ → Mitarbeiter wählen → Wochenstart wählen → Wochenübersicht.
       </div>
     </div>
 
+    <!-- Takt-Suche -->
+    <div class="card">
+      <label>Takt-Suche (Tag + Runde + Takt → Mitarbeiter)</label>
+      <div class="grid2">
+        <div>
+          <label>Tag</label>
+          <select id="searchDay">
+            <option value="mo">Mo</option><option value="di">Di</option><option value="mi">Mi</option>
+            <option value="do">Do</option><option value="fr">Fr</option><option value="sa">Sa</option><option value="so">So</option>
+          </select>
+        </div>
+        <div>
+          <label>Runde</label>
+          <select id="searchRound">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:10px;">
+        <div>
+          <label>Takt</label>
+          <input id="searchTakt" type="number" min="1" placeholder="z.B. 15" />
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+          <button class="btn primary" id="searchBtn" type="button" disabled>Wer hat diesen Takt?</button>
+        </div>
+      </div>
+
+      <div class="small" style="margin-top:8px;">
+        Wochenstart-Einstellung (oben) wirkt auch hier: Bei So–Fr beginnt die Rotation am Sonntag mit Runde 1.
+      </div>
+    </div>
+
+    <!-- Ergebnisse -->
     <div id="result" class="card result hide"></div>
     <div id="week" class="card hide"></div>
 
     <!-- Plan speichern -->
-    <div class="card planSaveCard">
+    <div class="card">
       <label>Plan speichern</label>
       <input id="planName" placeholder="z.B. Standardwoche / Änderung Mittwoch" />
       <div class="grid2" style="margin-top:10px;">
         <button class="btn" id="saveNew" type="button">Als neuen Plan speichern</button>
         <button class="btn" id="overwriteActive" type="button">Aktiven Plan überschreiben</button>
       </div>
-      <div class="small">Tipp: Wenn sich mitten in der Woche was ändert, speichere eine zweite Version und lade sie bei Bedarf.</div>
     </div>
 
   </div>
 
 <script>
   // ---------- constants ----------
+  const ROUNDS_PER_DAY = 4;
   const DAY_KEYS = ["mo","di","mi","do","fr","sa","so"];
   const DAY_NAMES = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 
-  // ---------- storage keys ----------
-  const STORAGE_KEY = "taktplan_saved_v5";          // { plans: {id:{name,text,rounds,updatedAt}}, activeId }
-  const LAST_DRAFT_KEY = "taktplan_last_draft_v5";  // { text, rounds, autoApply, autoSave, shiftPreset }
-  const LAST_QUERY_KEY = "taktplan_last_query_v5";  // { employee, day, round }
-  const UI_KEY = "taktplan_ui_v3";                  // { theme: auto|dark|light, mode: full|compact, haptics: on|off }
-  const FAV_KEY = "taktplan_favs_v2";               // [ "LOUIS", "FLORIAN", ... ]
+  const STORAGE_KEY = "taktplan_saved_v6";
+  const DRAFT_KEY   = "taktplan_draft_v1";
+  const UI_KEY      = "taktplan_ui_v4";      // nur haptics
+  const FAV_KEY     = "taktplan_favs_v2";
 
   // ---------- helpers ----------
   function normName(s){ return (s || "").trim().replace(/\s+/g," ").toUpperCase(); }
@@ -388,88 +318,40 @@ Tabelle:
   function saveState(state){ saveJSON(STORAGE_KEY, state); }
 
   function saveDraft(){
-    saveJSON(LAST_DRAFT_KEY, {
-      text: elTable.value,
-      rounds: elRounds.value,
-      autoApply: elAutoApply.value,
-      autoSave: elAutoSave.value,
-      shiftPreset: elShift.value
-    });
+    saveJSON(DRAFT_KEY, { text: elTable.value });
   }
-  function loadDraft(){ return loadJSON(LAST_DRAFT_KEY, null); }
+  function loadDraft(){ return loadJSON(DRAFT_KEY, null); }
 
-  function saveLastQuery(){
-    saveJSON(LAST_QUERY_KEY, {
-      employee: elEmp.value,
-      day: elDay.value,
-      round: elRound.value
-    });
-  }
-  function loadLastQuery(){ return loadJSON(LAST_QUERY_KEY, null); }
-
-  // Tag-Name aus Key
   function dayKeyToName(dayKey){
     const idx = DAY_KEYS.indexOf(dayKey);
     return DAY_NAMES[idx >= 0 ? idx : 0];
   }
 
-  // Wichtiger Teil: Index je nach Wochenstart
   function getDayIndex(dayKey, weekMode){
     if(weekMode === "sun"){
-      // Sonntag-basierte Reihenfolge: So (0), Mo (1), Di (2), Mi (3), Do (4), Fr (5), Sa (6)
       const sunOrder = ["so","mo","di","mi","do","fr","sa"];
       return sunOrder.indexOf(dayKey);
     }
-    // Standard: Montag-basiert
-    return DAY_KEYS.indexOf(dayKey); // mo=0, di=1, ... so=6
+    return DAY_KEYS.indexOf(dayKey); // mo=0..so=6
   }
 
-  // ---------- theme/mode/haptics ----------
-  function setTheme(theme){
-    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full", haptics:"on" });
-    ui.theme = theme;
-    saveJSON(UI_KEY, ui);
-
-    document.body.classList.remove("force-dark","force-light");
-    themeAuto.classList.toggle("active", theme==="auto");
-    themeDark.classList.toggle("active", theme==="dark");
-    themeLight.classList.toggle("active", theme==="light");
-
-    if(theme==="dark") document.body.classList.add("force-dark");
-    if(theme==="light") document.body.classList.add("force-light");
-  }
-
-  function setMode(mode){
-    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full", haptics:"on" });
-    ui.mode = mode;
-    saveJSON(UI_KEY, ui);
-
-    modeFull.classList.toggle("active", mode==="full");
-    modeCompact.classList.toggle("active", mode==="compact");
-    document.body.classList.toggle("compact", mode==="compact");
-  }
-
+  // ---------- haptics ----------
   function setHaptics(v){
-    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full", haptics:"on" });
+    const ui = loadJSON(UI_KEY, { haptics:"on" });
     ui.haptics = v;
     saveJSON(UI_KEY, ui);
-
     haptOn.classList.toggle("active", v==="on");
     haptOff.classList.toggle("active", v==="off");
   }
-
   function canVibrate(){
     return typeof navigator !== "undefined" && "vibrate" in navigator;
   }
-
   function haptic(kind){
-    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full", haptics:"on" });
+    const ui = loadJSON(UI_KEY, { haptics:"on" });
     if(ui.haptics === "off") return;
     if(!canVibrate()) return;
-
     if(kind === "tap") navigator.vibrate(10);
     else if(kind === "ok") navigator.vibrate([12, 20, 12]);
-    else if(kind === "warn") navigator.vibrate([18, 30, 18]);
     else if(kind === "err") navigator.vibrate([30, 40, 30]);
   }
 
@@ -485,24 +367,7 @@ Tabelle:
     elResult.classList.add("err");
     elResult.innerHTML = `<div><strong>Fehler:</strong> ${msg}</div>`;
   }
-
   function hideWeek(){ elWeek.classList.add("hide"); elWeek.innerHTML=""; }
-
-  function fillRounds(n){
-    elRound.innerHTML = "";
-    for(let i=1;i<=n;i++){
-      const opt=document.createElement("option");
-      opt.value=String(i); opt.textContent=String(i);
-      elRound.appendChild(opt);
-    }
-  }
-  function setEnabled(on){
-    elEmp.disabled = !on;
-    elDay.disabled = !on;
-    elRound.disabled = !on;
-    elQuery.disabled = !on;
-    elWeekBtn.disabled = !on;
-  }
 
   // ---------- parsing ----------
   function parseTable(text){
@@ -556,10 +421,10 @@ Tabelle:
   }
 
   class TaktPlan{
-    constructor(rows, roundsPerDay){
+    constructor(rows){
       if(!rows || rows.length===0) throw new Error("Keine gültigen Zeilen erkannt.");
       this.rows=rows;
-      this.roundsPerDay=roundsPerDay;
+      this.roundsPerDay=ROUNDS_PER_DAY;
 
       this.cycle=rows.filter(r=>normName(r.mitarbeiter)!=="BESETZT");
       if(this.cycle.length===0) throw new Error("Alle Einträge sind BESETZT – kein Rotationszyklus möglich.");
@@ -569,6 +434,9 @@ Tabelle:
         const key=normName(r.mitarbeiter);
         if(!this.startIndex.has(key)) this.startIndex.set(key,i);
       });
+
+      this.minTakt = Math.min(...rows.map(r=>r.takt));
+      this.maxTakt = Math.max(...rows.map(r=>r.takt));
     }
     assignment(employee, dayKey, roundNo, weekMode="mon"){
       if(roundNo<1 || roundNo>this.roundsPerDay) throw new Error(`Runde muss 1-${this.roundsPerDay} sein.`);
@@ -585,8 +453,8 @@ Tabelle:
     }
     weeklyOverview(employee, mode="mon"){
       const order = mode === "sun"
-        ? ["so","mo","di","mi","do","fr"]  // So–Fr
-        : ["mo","di","mi","do","fr"];      // Mo–Fr
+        ? ["so","mo","di","mi","do","fr"]
+        : ["mo","di","mi","do","fr"];
 
       const out=[];
       for(const dayKey of order){
@@ -597,6 +465,18 @@ Tabelle:
         }
       }
       return out;
+    }
+    findEmployeesByTakt(dayKey, roundNo, taktNo, mode="mon"){
+      const names = Array.from(this.startIndex.keys());
+      const result = [];
+      for(const key of names){
+        const employeeName = this.cycle.find(r => normName(r.mitarbeiter) === key).mitarbeiter;
+        const row = this.assignment(employeeName, dayKey, roundNo, mode);
+        if(row.takt === taktNo){
+          result.push({ name: employeeName, station: row.bezeichnung, takt: row.takt });
+        }
+      }
+      return result;
     }
   }
 
@@ -609,121 +489,6 @@ Tabelle:
     const missing=[];
     for(let t=min; t<=max; t++){ if(!uniq.has(t)) missing.push(t); }
     return { count: rows.length, uniq: uniq.size, min, max, dups: Array.from(new Set(dups)), missing };
-  }
-
-  // ---------- "Heute / Jetzt" ----------
-  function toMin(hh, mm){ return hh*60 + mm; }
-  function timeMinNow(){
-    const n = new Date();
-    return toMin(n.getHours(), n.getMinutes());
-  }
-  function inRangeHalfOpen(t, start, end){
-    return t >= start && t < end;
-  }
-
-  function computeDayKeyNow(){
-    const now = new Date();
-    const js = now.getDay();          // 0=Sun..6=Sat
-    const dayIndex = (js + 6) % 7;    // Mon=0..Sun=6
-    return { dayIndex, dayKey: DAY_KEYS[dayIndex], dayName: DAY_NAMES[dayIndex] };
-  }
-
-  function detectShift(){
-    const t = timeMinNow();
-    const inEarly = inRangeHalfOpen(t, toMin(6,30), toMin(14,30));
-    const inLate  = inRangeHalfOpen(t, toMin(14,30), toMin(22,30));
-    const inNight = inRangeHalfOpen(t, toMin(22,30), toMin(24,0)) || inRangeHalfOpen(t, toMin(0,0), toMin(6,11));
-    if(inEarly) return "early";
-    if(inLate)  return "late";
-    if(inNight) return "night";
-    return elShift.value || "early";
-  }
-
-  function currentRoundByShift(shift){
-    const t = timeMinNow();
-    const breakPolicy = "next";
-
-    let schedule = [];
-
-    if(shift === "early"){
-      schedule = [
-        { kind:"work",  start: toMin(6,30),  end: toMin(8,15),  round:1 },
-        { kind:"break", start: toMin(8,15),  end: toMin(8,30),  next:2, last:1 },
-        { kind:"work",  start: toMin(8,30),  end: toMin(10,15), round:2 },
-        { kind:"break", start: toMin(10,15), end: toMin(10,45), next:3, last:2 },
-        { kind:"work",  start: toMin(10,45), end: toMin(12,30), round:3 },
-        { kind:"break", start: toMin(12,30), end: toMin(12,45), next:4, last:3 },
-        { kind:"work",  start: toMin(12,45), end: toMin(14,30), round:4 },
-      ];
-    }
-
-    if(shift === "late"){
-      schedule = [
-        { kind:"work",  start: toMin(14,30), end: toMin(16,15), round:1 },
-        { kind:"break", start: toMin(16,15), end: toMin(16,30), next:2, last:1 },
-        { kind:"work",  start: toMin(16,30), end: toMin(18,15), round:2 },
-        { kind:"break", start: toMin(18,15), end: toMin(18,45), next:3, last:2 },
-        { kind:"work",  start: toMin(18,45), end: toMin(20,30), round:3 },
-        { kind:"break", start: toMin(20,30), end: toMin(20,45), next:4, last:3 },
-        { kind:"work",  start: toMin(20,45), end: toMin(22,30), round:4 },
-      ];
-    }
-
-    if(shift === "night"){
-      schedule = [
-        { kind:"work",  start: toMin(22,30), end: toMin(24,0),  round:1 },
-        { kind:"work",  start: toMin(0,0),   end: toMin(0,15),  round:1 },
-        { kind:"break", start: toMin(0,15),  end: toMin(0,30),  next:2, last:1 },
-        { kind:"work",  start: toMin(0,30),  end: toMin(2,15),  round:2 },
-        { kind:"break", start: toMin(2,15),  end: toMin(2,45),  next:3, last:2 },
-        { kind:"work",  start: toMin(2,45),  end: toMin(4,30),  round:3 },
-        { kind:"break", start: toMin(4,30),  end: toMin(4,45),  next:4, last:3 },
-        { kind:"work",  start: toMin(4,45),  end: toMin(6,11),  round:4 },
-      ];
-    }
-
-    for(const e of schedule){
-      if(inRangeHalfOpen(t, e.start, e.end)){
-        if(e.kind === "work"){
-          return { kind:"work", round:e.round, label:`Runde ${e.round}` };
-        }
-        if(e.kind === "break"){
-          const r = (breakPolicy === "next") ? e.next : e.last;
-          return { kind:"break", round:r, label:`Pause (setzt nächste Runde: ${r})` };
-        }
-      }
-    }
-
-    return { kind:"out", round:null, label:"Außerhalb Schichtzeit" };
-  }
-
-  function setTodayAndNow(){
-    const shift = detectShift();
-    elShift.value = shift;
-
-    const info = currentRoundByShift(shift);
-
-    let { dayIndex, dayKey, dayName } = computeDayKeyNow();
-    const t = timeMinNow();
-    const nightAfterMidnight = (shift === "night") && (t < toMin(6,11));
-
-    if(nightAfterMidnight){
-      dayIndex = (dayIndex + 6) % 7;
-      dayKey = DAY_KEYS[dayIndex];
-      dayName = DAY_NAMES[dayIndex];
-    }
-
-    elDay.value = dayKey;
-    if(info.round) elRound.value = String(info.round);
-
-    const shiftName = (shift==="early") ? "Früh" : (shift==="late" ? "Spät" : "Nacht");
-    nowHint.textContent = `Heute: ${dayName} • Schicht: ${shiftName} • ${info.label}`;
-
-    if(plan){
-      try{ runSingle(true); } catch {}
-    }
-
-    saveLastQuery();
   }
 
   // ---------- favorites ----------
@@ -745,10 +510,6 @@ Tabelle:
         if(target){
           elEmp.value = target.value;
           hideWeek();
-          if(plan){
-            try{ runSingle(true); } catch {}
-          }
-          saveLastQuery();
         }
       });
       favbar.appendChild(btn);
@@ -765,47 +526,38 @@ Tabelle:
   }
 
   // ---------- UI elements ----------
+  const haptOn = document.getElementById("haptOn");
+  const haptOff = document.getElementById("haptOff");
+
   const elPlanSelect = document.getElementById("planSelect");
   const elLoadSaved = document.getElementById("loadSaved");
   const elDeleteSaved = document.getElementById("deleteSaved");
 
   const elTable = document.getElementById("table");
-  const elRounds = document.getElementById("rounds");
-  const elAutoApply = document.getElementById("autoApply");
-  const elAutoSave = document.getElementById("autoSave");
   const elApplyBtn = document.getElementById("applyBtn");
-  const elShift = document.getElementById("shiftPreset");
+  const elClear = document.getElementById("clearBtn");
 
   const elEmp = document.getElementById("employee");
-  const elDay = document.getElementById("day");
-  const elRound = document.getElementById("round");
-  const elQuery = document.getElementById("queryBtn");
   const elWeekBtn = document.getElementById("weekBtn");
   const elWeekStart = document.getElementById("weekStart");
+  const editFavBtn = document.getElementById("editFavBtn");
+  const favbar = document.getElementById("favbar");
+
+  const elSearchDay = document.getElementById("searchDay");
+  const elSearchRound = document.getElementById("searchRound");
+  const elSearchTakt = document.getElementById("searchTakt");
+  const elSearchBtn = document.getElementById("searchBtn");
 
   const elResult = document.getElementById("result");
   const elWeek = document.getElementById("week");
+  const diagPills = document.getElementById("diagPills");
+
   const elPlanName = document.getElementById("planName");
   const elSaveNew = document.getElementById("saveNew");
   const elOverwriteActive = document.getElementById("overwriteActive");
 
-  const diagPills = document.getElementById("diagPills");
-  const nowBtn = document.getElementById("nowBtn");
-  const nowHint = document.getElementById("nowHint");
-  const editFavBtn = document.getElementById("editFavBtn");
-  const favbar = document.getElementById("favbar");
-  const elClear = document.getElementById("clearBtn");
-
-  const themeAuto = document.getElementById("themeAuto");
-  const themeDark = document.getElementById("themeDark");
-  const themeLight = document.getElementById("themeLight");
-  const modeFull = document.getElementById("modeFull");
-  const modeCompact = document.getElementById("modeCompact");
-  const haptOn = document.getElementById("haptOn");
-  const haptOff = document.getElementById("haptOff");
-
   let plan = null;
-  let applyTimer = null;
+  let employees = [];
 
   function refreshPlanSelect(){
     const state = loadState();
@@ -828,7 +580,7 @@ Tabelle:
     elPlanSelect.value = loadState().activeId || "";
   }
 
-  function renderDiagnostics(diag, roundsPerDay){
+  function renderDiagnostics(diag){
     const state = loadState();
     const active = state.activeId ? "Aktiv-Plan: JA" : "Aktiv-Plan: NEIN";
     const warn = [];
@@ -838,107 +590,51 @@ Tabelle:
     const pills = [];
     pills.push(`<span class="pill">Erkannt: <strong>${diag.count}</strong></span>`);
     pills.push(`<span class="pill">Zyklus: <strong>${plan ? plan.cycle.length : "-"}</strong></span>`);
-    pills.push(`<span class="pill">Runden/Tag: <strong>${roundsPerDay}</strong></span>`);
+    pills.push(`<span class="pill">Runden/Tag: <strong>${ROUNDS_PER_DAY}</strong></span>`);
     pills.push(`<span class="pill">${active}</span>`);
     if(warn.length) pills.push(`<span class="pill">Hinweis: <strong>${warn.join(" • ")}</strong></span>`);
 
     diagPills.innerHTML = pills.join("");
   }
 
-  function applyPlan({silent=false} = {}){
+  function setEnabled(on){
+    elEmp.disabled = !on;
+    elWeekBtn.disabled = !on;
+    elSearchBtn.disabled = !on;
+  }
+
+  function applyPlan(){
     const text = elTable.value;
-    const rpd = parseInt(elRounds.value,10) || 4;
     hideWeek();
+    elResult.classList.add("hide");
 
     const rows = parseTable(text);
     const diag = diagnostics(rows);
 
-    const newPlan = new TaktPlan(rows, rpd);
+    const newPlan = new TaktPlan(rows);
     plan = newPlan;
 
-    const names = Array.from(new Set(plan.cycle.map(r=>r.mitarbeiter.trim())))
+    employees = Array.from(new Set(plan.cycle.map(r=>r.mitarbeiter.trim())))
       .sort((a,b)=>normName(a).localeCompare(normName(b)));
 
     elEmp.innerHTML="";
-    for(const name of names){
-      const optA=document.createElement("option");
-      optA.value=name; optA.textContent=name;
-      elEmp.appendChild(optA);
+    for(const name of employees){
+      const opt=document.createElement("option");
+      opt.value=name; opt.textContent=name;
+      elEmp.appendChild(opt);
     }
 
-    fillRounds(rpd);
     setEnabled(true);
-
-    const last = loadLastQuery();
-    if(last){
-      const targetA = names.find(n=>normName(n)===normName(last.employee));
-      if(targetA) elEmp.value = targetA;
-      if(last.day) elDay.value = last.day;
-      if(last.round) elRound.value = last.round;
-    }
-
-    // Auto-save aktiver Plan
-    const state = loadState();
-    const activeId = state.activeId;
-    if(elAutoSave.value==="on" && activeId && state.plans[activeId]){
-      state.plans[activeId] = { ...state.plans[activeId], text, rounds: rpd, updatedAt: nowISO() };
-      saveState(state);
-      refreshPlanSelect();
-    }
-
     renderFavbar();
-    renderDiagnostics(diag, rpd);
+    renderDiagnostics(diag);
 
-    // nach Apply direkt letzte Abfrage nachziehen, wenn möglich
-    if(plan && elEmp.value){
-      try{ runSingle(true); } catch {}
-    }
-
-    if(!silent){
-      showOk(`Plan angewendet. Du kannst jetzt abfragen oder die Wochenübersicht anzeigen.`, true);
-    }
+    showOk(`Plan angewendet. Mitarbeiter-Listen & Takt-Suche sind aktiv.`);
   }
 
-  function scheduleAutoApply(){
-    if(elAutoApply.value!=="on") return;
-    if(applyTimer) clearTimeout(applyTimer);
-    applyTimer = setTimeout(()=>{
-      try{
-        if(!elTable.value.trim()) return;
-        applyPlan({silent:true});
-      } catch(e){
-        // silent
-      }
-    }, 600);
-  }
-
-  function runSingle(auto=false){
-    if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
-
+  function showWeek(){
+    if(!plan) throw new Error("Bitte erst Plan anwenden.");
     const employee = elEmp.value;
-    const dayKey = elDay.value;
-    const roundNo = parseInt(elRound.value,10);
-    const weekMode = elWeekStart.value || "mon";
-
-    const row = plan.assignment(employee, dayKey, roundNo, weekMode);
-    const dayName = dayKeyToName(dayKey);
-
-    hideWeek();
-
-    showOk(`
-      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-        <span class="pill"><strong>${employee}</strong></span>
-        <span class="pill">${dayName}</span>
-        <span class="pill">Runde <strong>${roundNo}</strong></span>
-        ${auto ? `<span class="pill">Auto</span>` : ``}
-      </div>
-      <div style="font-size:22px; font-weight:900; margin-top:10px;">${row.bezeichnung}</div>
-      <div class="mono" style="margin-top:8px; color: var(--muted);">Takt ${row.takt}</div>
-    `, !auto);
-  }
-
-  function showWeek(employee){
-    if(!plan) throw new Error("Bitte erst Plan anwenden (oder Auto-Apply nutzen).");
+    if(!employee) throw new Error("Bitte Mitarbeiter wählen.");
 
     const mode = elWeekStart.value || "mon";
     const data = plan.weeklyOverview(employee, mode);
@@ -959,127 +655,60 @@ Tabelle:
     `;
   }
 
-  // ---------- init ----------
-  (function init(){
-    const ui = loadJSON(UI_KEY, { theme:"auto", mode:"full", haptics:"on" });
-    setTheme(ui.theme || "auto");
-    setMode(ui.mode || "full");
-    setHaptics(ui.haptics || "on");
+  function searchTakt(){
+    if(!plan) throw new Error("Bitte erst Plan anwenden.");
+    const dayKey = elSearchDay.value;
+    const roundNo = parseInt(elSearchRound.value, 10);
+    const taktNo = parseInt(elSearchTakt.value, 10);
+    const mode = elWeekStart.value || "mon";
 
-    const draft = loadDraft();
-    if(draft){
-      if(draft.text) elTable.value = draft.text;
-      if(draft.rounds) elRounds.value = draft.rounds;
-      if(draft.autoApply) elAutoApply.value = draft.autoApply;
-      if(draft.autoSave) elAutoSave.value = draft.autoSave;
-      if(draft.shiftPreset) elShift.value = draft.shiftPreset;
+    if(!taktNo || Number.isNaN(taktNo)) throw new Error("Bitte einen gültigen Takt eingeben.");
+
+    if(taktNo < plan.minTakt || taktNo > plan.maxTakt){
+      showErr(`Takt ${taktNo} liegt außerhalb des Planbereichs (${plan.minTakt}–${plan.maxTakt}).`);
+      return;
     }
 
-    refreshPlanSelect();
-    setEnabled(false);
-    renderFavbar();
+    const hits = plan.findEmployeesByTakt(dayKey, roundNo, taktNo, mode);
+    const dayName = dayKeyToName(dayKey);
 
-    const detected = detectShift();
-    const shiftName = detected==="early" ? "Früh" : (detected==="late" ? "Spät" : "Nacht");
-    nowHint.textContent = `Schicht-Erkennung: ${shiftName}. Tippe „Heute/Jetzt“, um Tag + Runde zu setzen.`;
-  })();
-
-  // ---------- events ----------
-  themeAuto.addEventListener("click", ()=>{ setTheme("auto"); haptic("tap"); });
-  themeDark.addEventListener("click", ()=>{ setTheme("dark"); haptic("tap"); });
-  themeLight.addEventListener("click", ()=>{ setTheme("light"); haptic("tap"); });
-
-  modeFull.addEventListener("click", ()=>{ setMode("full"); haptic("tap"); });
-  modeCompact.addEventListener("click", ()=>{ setMode("compact"); haptic("tap"); });
-
-  haptOn.addEventListener("click", ()=>{ setHaptics("on"); haptic("tap"); });
-  haptOff.addEventListener("click", ()=>{ setHaptics("off"); });
-
-  elTable.addEventListener("input", ()=>{ saveDraft(); scheduleAutoApply(); });
-  [elRounds, elAutoApply, elAutoSave, elShift].forEach(el=>{
-    el.addEventListener("input", ()=>{ saveDraft(); scheduleAutoApply(); });
-    el.addEventListener("change", ()=>{ saveDraft(); scheduleAutoApply(); });
-  });
-
-  elApplyBtn.addEventListener("click", ()=>{
-    try{
-      haptic("tap");
-      applyPlan({silent:false});
-    } catch(e){
-      plan=null;
-      setEnabled(false);
-      showErr(e.message || String(e), true);
+    if(!hits.length){
+      showErr(`Kein Mitarbeiter mit Takt ${taktNo} in Runde ${roundNo} am ${dayName} gefunden.`);
+      return;
     }
-  });
 
-  nowBtn.addEventListener("click", ()=>{
-    try{
-      haptic("tap");
-      setTodayAndNow();
-      showOk("Heute/Jetzt gesetzt. Tag und Runde sind vorausgewählt.", true);
-    } catch(e){
-      showErr(e.message || String(e), true);
-    }
-  });
+    const list = hits.map(h => `
+      <div style="padding:8px 0;">
+        <div style="font-weight:900;">${h.name}</div>
+        <div style="font-size:14px;">${h.station}</div>
+        <div class="mono" style="font-size:12px; color:var(--muted);">Takt ${h.takt}</div>
+      </div>
+    `).join("");
 
-  elQuery.addEventListener("click", ()=>{
-    try{
-      haptic("tap");
-      runSingle(false);
-      saveLastQuery();
-    } catch(e){
-      showErr(e.message || String(e), true);
-    }
-  });
-
-  elWeekBtn.addEventListener("click", ()=>{
-    try{
-      haptic("tap");
-      const employee = elEmp.value;
-      showWeek(employee);
-      saveLastQuery();
-    } catch(e){
-      showErr(e.message || String(e), true);
-    }
-  });
-
-  elClear.addEventListener("click", ()=>{
-    haptic("tap");
-    elTable.value="";
-    saveDraft();
-    plan=null;
-    setEnabled(false);
-    hideWeek();
-    diagPills.innerHTML="";
-    showOk("Eingabe geleert.", true);
-  });
-
-  editFavBtn.addEventListener("click", ()=>{ haptic("tap"); editFavs(); });
-
-  elSaveNew.addEventListener("click", ()=>{
-    try{
-      haptic("tap");
-      saveNewPlan();
-      const st = loadState();
-      showOk(`Gespeichert und aktiviert: <strong>${st.plans[st.activeId].name}</strong>`, true);
-    } catch(e){
-      showErr(e.message || String(e), true);
-    }
-  });
+    showOk(`
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <span class="pill">${dayName}</span>
+        <span class="pill">Runde <strong>${roundNo}</strong></span>
+        <span class="pill">Takt <strong>${taktNo}</strong></span>
+      </div>
+      <div style="margin-top:10px;">
+        ${list}
+      </div>
+    `);
+  }
 
   function saveNewPlan(){
     const name=(elPlanName.value||"").trim();
     if(!name) throw new Error("Bitte einen Namen eingeben (z.B. 'Standardwoche').");
     const text=elTable.value;
-    const rounds=parseInt(elRounds.value,10) || 4;
     if(!text.trim()) throw new Error("Plan-Text ist leer.");
 
     const rows=parseTable(text);
-    new TaktPlan(rows, rounds);
+    new TaktPlan(rows); // Validierung
 
     const state=loadState();
     const id=uid();
-    state.plans[id]={ name, text, rounds, updatedAt: nowISO() };
+    state.plans[id]={ name, text, rounds: ROUNDS_PER_DAY, updatedAt: nowISO() };
     state.activeId=id;
     saveState(state);
     refreshPlanSelect();
@@ -1090,44 +719,15 @@ Tabelle:
     const id=state.activeId;
     if(!id || !state.plans[id]) throw new Error("Kein aktiver Plan ausgewählt.");
     const text=elTable.value;
-    const rounds=parseInt(elRounds.value,10) || 4;
     if(!text.trim()) throw new Error("Plan-Text ist leer.");
 
     const rows=parseTable(text);
-    new TaktPlan(rows, rounds);
+    new TaktPlan(rows); // Validierung
 
-    state.plans[id]={ ...state.plans[id], text, rounds, updatedAt: nowISO() };
+    state.plans[id]={ ...state.plans[id], text, rounds: ROUNDS_PER_DAY, updatedAt: nowISO() };
     saveState(state);
     refreshPlanSelect();
   }
-
-  elOverwriteActive.addEventListener("click", ()=>{
-    try{
-      haptic("tap");
-      overwriteActivePlan();
-      showOk(`Aktiver Plan überschrieben.`, true);
-    } catch(e){
-      showErr(e.message || String(e), true);
-    }
-  });
-
-  elLoadSaved.addEventListener("click", ()=>{
-    try{
-      haptic("tap");
-      loadSelectedPlan();
-    } catch(e){
-      showErr(e.message || String(e), true);
-    }
-  });
-
-  elDeleteSaved.addEventListener("click", ()=>{
-    try{
-      haptic("tap");
-      deleteSelectedPlan();
-    } catch(e){
-      showErr(e.message || String(e), true);
-    }
-  });
 
   function loadSelectedPlan(){
     const state=loadState();
@@ -1136,15 +736,14 @@ Tabelle:
     const p=state.plans[id];
 
     elTable.value=p.text || "";
-    elRounds.value=p.rounds || 4;
     saveDraft();
 
     state.activeId=id;
     saveState(state);
     refreshPlanSelect();
 
-    applyPlan({silent:false});
-    showOk(`Plan geladen & angewendet: <strong>${p.name}</strong>`, true);
+    applyPlan();
+    showOk(`Plan geladen & angewendet: <strong>${p.name}</strong>`);
   }
 
   function deleteSelectedPlan(){
@@ -1158,29 +757,115 @@ Tabelle:
     saveState(state);
     refreshPlanSelect();
 
-    showOk(`Plan gelöscht: <strong>${name}</strong>`, true);
+    showOk(`Plan gelöscht: <strong>${name}</strong>`);
   }
 
-  // Änderungen an Mitarbeiter/Tag/Runde → Auto-Update
-  [elEmp, elDay, elRound].forEach(el=>{
-    el.addEventListener("change", ()=>{
-      saveLastQuery();
-      if(plan){
-        try{ runSingle(true); } catch {}
-      }
-    });
+  // ---------- init ----------
+  (function init(){
+    const ui = loadJSON(UI_KEY, { haptics:"on" });
+    setHaptics(ui.haptics || "on");
+
+    const draft = loadDraft();
+    if(draft && draft.text) elTable.value = draft.text;
+
+    refreshPlanSelect();
+    setEnabled(false);
+    renderFavbar();
+  })();
+
+  // ---------- events ----------
+  haptOn.addEventListener("click", ()=>{ setHaptics("on"); haptic("tap"); });
+  haptOff.addEventListener("click", ()=>{ setHaptics("off"); });
+
+  elTable.addEventListener("input", saveDraft);
+
+  elApplyBtn.addEventListener("click", ()=>{
+    try{
+      haptic("tap");
+      applyPlan();
+    } catch(e){
+      plan=null;
+      setEnabled(false);
+      showErr(e.message || String(e));
+    }
   });
 
-  // Änderung Wochenstart → Week-View live aktualisieren
-  elWeekStart.addEventListener("change", ()=>{
-    if(plan && !elWeek.classList.contains("hide")){
-      try{ showWeek(elEmp.value); } catch {}
-    } else if(plan){
-      // auch Einzelausgabe neu, weil sich Rotation verschiebt
-      try{ runSingle(true); } catch {}
+  elClear.addEventListener("click", ()=>{
+    haptic("tap");
+    elTable.value="";
+    saveDraft();
+    plan=null;
+    employees=[];
+    elEmp.innerHTML="";
+    setEnabled(false);
+    hideWeek();
+    elResult.classList.add("hide");
+    diagPills.innerHTML="";
+  });
+
+  elWeekBtn.addEventListener("click", ()=>{
+    try{
+      haptic("tap");
+      showWeek();
+    } catch(e){
+      showErr(e.message || String(e));
     }
+  });
+
+  editFavBtn.addEventListener("click", ()=>{ haptic("tap"); editFavs(); });
+
+  elSaveNew.addEventListener("click", ()=>{
+    try{
+      haptic("tap");
+      saveNewPlan();
+      const st = loadState();
+      showOk(`Gespeichert und aktiviert: <strong>${st.plans[st.activeId].name}</strong>`);
+    } catch(e){
+      showErr(e.message || String(e));
+    }
+  });
+
+  elOverwriteActive.addEventListener("click", ()=>{
+    try{
+      haptic("tap");
+      overwriteActivePlan();
+      showOk(`Aktiver Plan überschrieben.`);
+    } catch(e){
+      showErr(e.message || String(e));
+    }
+  });
+
+  elLoadSaved.addEventListener("click", ()=>{
+    try{
+      haptic("tap");
+      loadSelectedPlan();
+    } catch(e){
+      showErr(e.message || String(e));
+    }
+  });
+
+  elDeleteSaved.addEventListener("click", ()=>{
+    try{
+      haptic("tap");
+      deleteSelectedPlan();
+    } catch(e){
+      showErr(e.message || String(e));
+    }
+  });
+
+  elSearchBtn.addEventListener("click", ()=>{
+    try{
+      haptic("tap");
+      searchTakt();
+    } catch(e){
+      showErr(e.message || String(e));
+    }
+  });
+
+  // Wenn Mitarbeiter / Wochenstart geändert → Wochenübersicht ausblenden
+  [elEmp, elWeekStart].forEach(el=>{
+    el.addEventListener("change", ()=>{ hideWeek(); });
   });
 </script>
 </body>
 </html>
-
