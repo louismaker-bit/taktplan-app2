@@ -176,122 +176,117 @@
     </div>
   </div>
 
-  <div class="wrap">
+<div class="wrap">
 
-    <!-- 1. Mitarbeiter für Wochenübersicht -->
-    <div class="card">
-      <div class="grid2">
-        <div>
-          <label>Mitarbeiter (für Wochenübersicht)</label>
-          <div id="empBar" class="favbar"></div>
-        </div>
-
-        <div>
-          <label>Wochenstart</label>
-          <select id="weekStart">
-            <option value="mon" selected>Mo–Fr</option>
-            <option value="sun">So–Fr</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Hinweis: kein extra Button mehr, Klick auf Mitarbeiter zeigt Übersicht -->
-      <div class="small" style="margin-top:8px;">
-        Tipp: Einfach auf einen Mitarbeiter tippen – die Wochenübersicht wird automatisch aktualisiert.
-      </div>
+<!-- 1 Gespeicherter Plan -->
+<div class="card">
+  <label>Gespeicherter Plan</label>
+  <div class="grid2">
+    <select id="planSelect"></select>
+    <div class="grid2">
+      <button class="btn" id="loadSaved">Laden</button>
+      <button class="btn" id="deleteSaved">Löschen</button>
     </div>
-
-    <!-- 2. Wochenübersicht-Tabelle -->
-    <div id="week" class="card hide"></div>
-
-    <!-- 3. Stations-Suche -->
-    <div class="card">
-      <label>Stations-Suche (Tag + Runde + Station → Mitarbeiter)</label>
-      <div class="grid2">
-        <div>
-          <label>Tag</label>
-          <select id="searchDay">
-            <option value="mo">Mo</option><option value="di">Di</option><option value="mi">Mi</option>
-            <option value="do">Do</option><option value="fr">Fr</option><option value="sa">Sa</option><option value="so">So</option>
-          </select>
-        </div>
-        <div>
-          <label>Runde</label>
-          <select id="searchRound">
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="grid2" style="margin-top:10px;">
-        <div>
-          <label>Station</label>
-          <select id="searchStation">
-            <!-- wird nach Plan anwenden befüllt -->
-          </select>
-        </div>
-        <div style="display:flex; align-items:flex-end;">
-          <button class="btn primary" id="searchBtn" type="button" disabled>Wer hat diese Station?</button>
-        </div>
-      </div>
-
-      <div class="small" style="margin-top:8px;">
-        Wochenstart-Einstellung wirkt auch hier (So–Fr verschiebt den Rotationsbeginn auf Sonntag Runde 1).
-      </div>
-    </div>
-
-    <!-- 4. Ergebnis-Box -->
-    <div id="result" class="card result hide"></div>
-
-    <!-- 5. Plan speichern -->
-    <div class="card">
-      <label>Plan speichern</label>
-      <input id="planName" placeholder="z.B. Standardwoche / Änderung Mittwoch" />
-      <div class="grid2" style="margin-top:10px;">
-        <button class="btn" id="saveNew" type="button">Als neuen Plan speichern</button>
-        <button class="btn" id="overwriteActive" type="button">Aktiven Plan überschreiben</button>
-      </div>
-    </div>
-
-    <!-- 6. Statuszeile aktiver Plan -->
-    <div class="card">
-      <div id="activeStatus" class="small">Aktiver Plan: keiner</div>
-    </div>
-
-    <!-- 7. Gespeicherter Plan -->
-    <div class="card">
-      <label>Gespeicherter Plan</label>
-      <div class="grid2">
-        <select id="planSelect"></select>
-        <div class="grid2">
-          <button class="btn" id="loadSaved" type="button">Laden</button>
-          <button class="btn" id="deleteSaved" type="button">Löschen</button>
-        </div>
-      </div>
-      <div class="small">Gespeicherte Pläne bleiben auf diesem Gerät.</div>
-    </div>
-
-    <!-- 8. Plan einfügen (OCR/Tabelle) GANZ unten -->
-    <div class="card">
-      <label>Plan einfügen (OCR oder Tabelle)</label>
-      <textarea id="table" placeholder="OCR:
-1 Airbag LISA 2 Bepl. Re. BESETZT ...
-
-Tabelle:
-1;Airbag;LISA"></textarea>
-
-      <div class="grid2" style="margin-top:10px;">
-        <button class="btn primary" id="applyBtn" type="button">Plan anwenden</button>
-        <button class="btn" id="clearBtn" type="button">Eingabe leeren</button>
-      </div>
-
-      <div id="diagPills" class="diagnostics" style="margin-top:8px;"></div>
-    </div>
-
   </div>
+</div>
+
+<!-- 2 Ergebnis -->
+<div id="result" class="card result hide"></div>
+
+<!-- 3 Mitarbeiter -->
+<div class="card">
+  <div class="grid2">
+    <div>
+      <label>Mitarbeiter (Wochenübersicht)</label>
+      <div id="empBar" class="favbar"></div>
+    </div>
+
+    <div>
+      <label>Wochenstart</label>
+      <select id="weekStart">
+        <option value="mon">Mo–Fr</option>
+        <option value="sun">So–Fr</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- 4 Wochenübersicht -->
+<div id="week" class="card hide"></div>
+
+<!-- 5 Status -->
+<div class="card">
+  <div id="activeStatus" class="small">Aktiver Plan: keiner</div>
+</div>
+
+<!-- 6 Takt Suche -->
+<div class="card">
+  <label>Takt-Suche</label>
+
+  <div class="grid2">
+    <div>
+      <label>Tag</label>
+      <select id="searchDay">
+        <option value="mo">Mo</option>
+        <option value="di">Di</option>
+        <option value="mi">Mi</option>
+        <option value="do">Do</option>
+        <option value="fr">Fr</option>
+        <option value="sa">Sa</option>
+        <option value="so">So</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Runde</label>
+      <select id="searchRound">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:10px;">
+    <div>
+      <label>Station</label>
+      <select id="searchStation"></select>
+    </div>
+
+    <div style="display:flex; align-items:flex-end;">
+      <button class="btn primary" id="searchBtn">Suchen</button>
+    </div>
+  </div>
+</div>
+
+<!-- 7 Plan einfügen -->
+<div class="card">
+  <label>Plan einfügen (OCR / Tabelle)</label>
+
+  <textarea id="table"></textarea>
+
+  <div class="grid2" style="margin-top:10px;">
+    <button class="btn primary" id="applyBtn">Plan anwenden</button>
+    <button class="btn" id="clearBtn">Leeren</button>
+  </div>
+
+  <div id="diagPills"></div>
+</div>
+
+<!-- 8 Plan speichern -->
+<div class="card">
+  <label>Plan speichern</label>
+
+  <input id="planName" placeholder="Name des Plans">
+
+  <div class="grid2" style="margin-top:10px;">
+    <button class="btn" id="saveNew">Als neuen Plan speichern</button>
+    <button class="btn" id="overwriteActive">Aktiven Plan überschreiben</button>
+  </div>
+</div>
+
+</div>
 
 <script>
   const ROUNDS_PER_DAY = 4;
@@ -894,3 +889,4 @@ Tabelle:
 </script>
 </body>
 </html>
+
