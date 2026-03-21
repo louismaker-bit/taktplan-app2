@@ -19,6 +19,7 @@
       --border: rgba(255,255,255,.14);
       --accent: #7dd3fc;
       --ok: rgba(34,197,94,.16);
+      --warn: rgba(245,158,11,.16);
       --err: rgba(239,68,68,.18);
       --shadow: 0 10px 30px rgba(0,0,0,.35);
       --radius: 16px;
@@ -125,14 +126,21 @@
     }
 
     .result.ok{ background: var(--ok); border-color: rgba(34,197,94,.35); }
+    .result.warn{ background: var(--warn); border-color: rgba(245,158,11,.35); }
     .result.err{ background: var(--err); border-color: rgba(239,68,68,.35); }
     .mono{ font-family: var(--mono); }
 
     .favbar{
-      display:flex; flex-wrap: wrap; gap: 8px;
+      display:flex;
+      gap: 8px;
+      overflow-x:auto;
+      flex-wrap:nowrap;
+      padding-bottom:4px;
       margin-top: 8px;
+      -webkit-overflow-scrolling: touch;
     }
     .favbar button{
+      flex: 0 0 auto;
       height: 34px;
       padding: 0 12px;
       border-radius: 999px;
@@ -214,7 +222,7 @@
 <div class="card">
   <div id="activeStatus" class="small">Aktiver Plan: keiner</div>
 </div>
-  
+
 <!-- 5 Ergebnis -->
 <div id="result" class="card result hide"></div>
 
@@ -292,11 +300,30 @@
   const DAY_KEYS = ["mo","di","mi","do","fr","sa","so"];
   const DAY_NAMES = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 
-  const STORAGE_KEY = "taktplan_saved_v6";
-  const DRAFT_KEY   = "taktplan_draft_v1";
-  const UI_KEY      = "taktplan_ui_v4";
+  const STORAGE_KEY = "taktplan_saved_v7";
+  const DRAFT_KEY   = "taktplan_draft_v2";
+  const UI_KEY      = "taktplan_ui_v5";
 
-  function normName(s){ return (s || "").trim().replace(/\s+/g," ").toUpperCase(); }
+  function normName(s){
+    return (s || "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toUpperCase()
+      .replace(/Ä/g, "AE")
+      .replace(/Ö/g, "OE")
+      .replace(/Ü/g, "UE")
+      .replace(/ß/g, "SS");
+  }
+
+  function safeHtml(str){
+    return String(str ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   function nowISO(){ return new Date().toISOString(); }
   function uid(){ return "p_" + Math.random().toString(16).slice(2) + "_" + Date.now().toString(16); }
 
@@ -305,9 +332,14 @@
       const raw = localStorage.getItem(key);
       if(!raw) return fallback;
       return JSON.parse(raw);
-    } catch { return fallback; }
+    } catch {
+      return fallback;
+    }
   }
-  function saveJSON(key, value){ localStorage.setItem(key, JSON.stringify(value)); }
+
+  function saveJSON(key, value){
+    localStorage.setItem(key, JSON.stringify(value));
+  }
 
   function loadState(){
     const s = loadJSON(STORAGE_KEY, { plans:{}, activeId:null });
@@ -315,12 +347,18 @@
     s.activeId = s.activeId || null;
     return s;
   }
-  function saveState(state){ saveJSON(STORAGE_KEY, state); }
+
+  function saveState(state){
+    saveJSON(STORAGE_KEY, state);
+  }
 
   function saveDraft(){
     saveJSON(DRAFT_KEY, { text: elTable.value });
   }
-  function loadDraft(){ return loadJSON(DRAFT_KEY, null); }
+
+  function loadDraft(){
+    return loadJSON(DRAFT_KEY, null);
+  }
 
   function dayKeyToName(dayKey){
     const idx = DAY_KEYS.indexOf(dayKey);
@@ -332,164 +370,387 @@
       const sunOrder = ["so","mo","di","mi","do","fr","sa"];
       return sunOrder.indexOf(dayKey);
     }
-    return DAY_KEYS.indexOf(dayKey); // mo=0..so=6
+    return DAY_KEYS.indexOf(dayKey);
   }
 
-  // Haptik
+  function cleanOCRText(text){
+    return (text || "")
+      .replace(/\r/g, "\n")
+      .replace(/[|]/g, " ")
+      .replace(/[¦]/g, " ")
+      .replace(/[–—]/g, "-")
+      .replace(/[“”„"]/g, '"')
+      .replace(/[‘’]/g, "'")
+      .replace(/\bB\s*E\s*S\s*E\s*T\s*Z\s*T\b/gi, "BESETZT")
+      .replace(/\bBESET2T\b/gi, "BESETZT")
+      .replace(/\bBE5ETZT\b/gi, "BESETZT")
+      .replace(/\bBESET2T\b/gi, "BESETZT")
+      .replace(/\bO(?=\d)/g, "0")
+      .replace(/(?<=\d)O\b/g, "0")
+      .replace(/\bI(?=\d)/g, "1")
+      .replace(/(?<=\d)I\b/g, "1")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
+  function fixLikelyNumberToken(token){
+    return String(token || "")
+      .replace(/O/g, "0")
+      .replace(/I/g, "1")
+      .replace(/l/g, "1")
+      .replace(/S/g, "5");
+  }
+
+  function isLikelyNumber(token){
+    return /^\d+$/.test(fixLikelyNumberToken(token));
+  }
+
+  function toNumber(token){
+    const fixed = fixLikelyNumberToken(token);
+    return /^\d+$/.test(fixed) ? parseInt(fixed, 10) : null;
+  }
+
+  function saveUiState(){
+    const ui = loadJSON(UI_KEY, { haptics:"on" });
+    ui.weekStart = elWeekStart.value;
+    ui.searchDay = elSearchDay.value;
+    ui.searchRound = elSearchRound.value;
+    ui.searchStation = elSearchStation.value;
+    ui.selectedEmployee = selectedEmployee;
+    ui.planName = elPlanName.value;
+    saveJSON(UI_KEY, ui);
+  }
+
+  function restoreUiState(){
+    const ui = loadJSON(UI_KEY, { haptics:"on" });
+
+    if(ui.weekStart) elWeekStart.value = ui.weekStart;
+    if(ui.searchDay) elSearchDay.value = ui.searchDay;
+    if(ui.searchRound) elSearchRound.value = ui.searchRound;
+    if(ui.planName) elPlanName.value = ui.planName;
+  }
+
   function setHaptics(v){
     const ui = loadJSON(UI_KEY, { haptics:"on" });
     ui.haptics = v;
     saveJSON(UI_KEY, ui);
-    haptOn.classList.toggle("active", v==="on");
-    haptOff.classList.toggle("active", v==="off");
+    haptOn.classList.toggle("active", v === "on");
+    haptOff.classList.toggle("active", v === "off");
   }
+
   function canVibrate(){
     return typeof navigator !== "undefined" && "vibrate" in navigator;
   }
+
   function haptic(kind){
     const ui = loadJSON(UI_KEY, { haptics:"on" });
     if(ui.haptics === "off") return;
     if(!canVibrate()) return;
+
     if(kind === "tap") navigator.vibrate(10);
     else if(kind === "ok") navigator.vibrate([12, 20, 12]);
     else if(kind === "err") navigator.vibrate([30, 40, 30]);
   }
 
+  function scrollResultIntoView(){
+    setTimeout(()=>{
+      elResult.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 40);
+  }
+
   function showOk(html, doHaptic=true){
     if(doHaptic) haptic("ok");
-    elResult.classList.remove("hide","err");
+    elResult.classList.remove("hide","err","warn");
     elResult.classList.add("ok");
     elResult.innerHTML = html;
+    scrollResultIntoView();
   }
+
+  function showWarn(html, doHaptic=false){
+    if(doHaptic) haptic("tap");
+    elResult.classList.remove("hide","err","ok");
+    elResult.classList.add("warn");
+    elResult.innerHTML = html;
+    scrollResultIntoView();
+  }
+
   function showErr(msg, doHaptic=true){
     if(doHaptic) haptic("err");
-    elResult.classList.remove("hide","ok");
+    elResult.classList.remove("hide","ok","warn");
     elResult.classList.add("err");
-    elResult.innerHTML = `<div><strong>Fehler:</strong> ${msg}</div>`;
+    elResult.innerHTML = `<div><strong>Fehler:</strong> ${safeHtml(msg)}</div>`;
+    scrollResultIntoView();
   }
-  function hideWeek(){ elWeek.classList.add("hide"); elWeek.innerHTML=""; }
 
-  // Parsing
+  function hideWeek(){
+    elWeek.classList.add("hide");
+    elWeek.innerHTML = "";
+  }
+
   function parseTable(text){
-    const raw=(text||"").trim();
-    if(!raw) return [];
+    const raw = cleanOCRText(text);
+    if(!raw) return { rows: [], skipped: [], meta: { mode: "empty" } };
 
-    const looksLikeTable = /[;\t,]/.test(raw);
+    const rows = [];
+    const skipped = [];
+    const lines = raw.split(/\n+/).map(x => x.trim()).filter(Boolean);
 
-    if(looksLikeTable){
-      const rows=[];
-      const lines=raw.split(/\r?\n/);
-      for(const line0 of lines){
-        const line=line0.trim();
-        if(!line) continue;
-        const parts=line.split(/[\t;,]+/).map(x=>x.trim()).filter(Boolean);
-        if(parts.length<3) continue;
+    const looksLikeDelimitedTable = lines.some(line => /[;\t,]/.test(line));
 
-        let takt=null, idx=null;
-        for(let i=0;i<Math.min(2, parts.length);i++){
-          if(/^\d+$/.test(parts[i])){ takt=parseInt(parts[i],10); idx=i; break; }
+    if(looksLikeDelimitedTable){
+      for(const line of lines){
+        const parts = line.split(/[\t;,]+/).map(x => x.trim()).filter(Boolean);
+        if(parts.length < 3){
+          skipped.push({ line, reason: "zu wenig Spalten" });
+          continue;
         }
-        if(takt===null) continue;
-        if(idx+2>=parts.length) continue;
 
-        rows.push({ takt, bezeichnung: parts[idx+1], mitarbeiter: parts[idx+2] });
+        let takt = null;
+        let idx = -1;
+
+        for(let i=0; i<Math.min(2, parts.length); i++){
+          if(isLikelyNumber(parts[i])){
+            takt = toNumber(parts[i]);
+            idx = i;
+            break;
+          }
+        }
+
+        if(takt === null || idx < 0){
+          skipped.push({ line, reason: "keine Taktnummer erkannt" });
+          continue;
+        }
+
+        if(idx + 2 >= parts.length){
+          skipped.push({ line, reason: "Bezeichnung/Mitarbeiter fehlt" });
+          continue;
+        }
+
+        const bezeichnung = (parts[idx + 1] || "").trim();
+        const mitarbeiter = (parts[idx + 2] || "").trim();
+
+        if(!bezeichnung || !mitarbeiter){
+          skipped.push({ line, reason: "Bezeichnung oder Mitarbeiter leer" });
+          continue;
+        }
+
+        rows.push({ takt, bezeichnung, mitarbeiter });
       }
+
       rows.sort((a,b)=>a.takt-b.takt);
-      return rows;
+      return { rows, skipped, meta: { mode: "delimited" } };
     }
 
-    const cleaned=raw.replace(/\r?\n/g," ").replace(/\s+/g," ").trim();
-    const tokens=cleaned.split(" ").filter(Boolean);
+    for(const line of lines){
+      const tokens = line.split(/\s+/).filter(Boolean);
+      if(tokens.length < 3){
+        skipped.push({ line, reason: "zu kurz" });
+        continue;
+      }
 
-    const segs=[];
-    let i=0;
-    while(i<tokens.length){
-      if(!/^\d+$/.test(tokens[i])){ i++; continue; }
-      const takt=parseInt(tokens[i],10); i++;
-      const content=[];
-      while(i<tokens.length && !/^\d+$/.test(tokens[i])){ content.push(tokens[i]); i++; }
-      if(content.length>=2) segs.push({ takt, content });
+      let firstNumIdx = -1;
+      for(let i=0; i<Math.min(3, tokens.length); i++){
+        if(isLikelyNumber(tokens[i])){
+          firstNumIdx = i;
+          break;
+        }
+      }
+
+      if(firstNumIdx < 0){
+        skipped.push({ line, reason: "keine Taktnummer am Zeilenanfang erkannt" });
+        continue;
+      }
+
+      const takt = toNumber(tokens[firstNumIdx]);
+      const content = tokens.slice(firstNumIdx + 1);
+
+      if(content.length < 2){
+        skipped.push({ line, reason: "zu wenig Inhalte nach Taktnummer" });
+        continue;
+      }
+
+      const mitarbeiter = content[content.length - 1];
+      const bezeichnung = content.slice(0, -1).join(" ").trim();
+
+      if(!bezeichnung || !mitarbeiter){
+        skipped.push({ line, reason: "Bezeichnung oder Mitarbeiter leer" });
+        continue;
+      }
+
+      rows.push({ takt, bezeichnung, mitarbeiter });
     }
 
-    const rows=segs.map(s=>{
-      const mitarbeiter=s.content[s.content.length-1];
-      const bezeichnung=s.content.slice(0,-1).join(" ").trim();
-      return { takt: s.takt, bezeichnung, mitarbeiter };
-    });
+    if(rows.length > 0){
+      rows.sort((a,b)=>a.takt-b.takt);
+      return { rows, skipped, meta: { mode: "linewise" } };
+    }
+
+    const cleaned = raw.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+    const tokens = cleaned.split(" ").filter(Boolean);
+
+    let i = 0;
+    while(i < tokens.length){
+      if(!isLikelyNumber(tokens[i])){ i++; continue; }
+
+      const takt = toNumber(tokens[i]);
+      i++;
+
+      const content = [];
+      while(i < tokens.length && !isLikelyNumber(tokens[i])){
+        content.push(tokens[i]);
+        i++;
+      }
+
+      if(content.length >= 2){
+        const mitarbeiter = content[content.length - 1];
+        const bezeichnung = content.slice(0, -1).join(" ").trim();
+        if(bezeichnung && mitarbeiter){
+          rows.push({ takt, bezeichnung, mitarbeiter });
+        }
+      }
+    }
+
     rows.sort((a,b)=>a.takt-b.takt);
-    return rows;
+
+    if(!rows.length){
+      return {
+        rows: [],
+        skipped: [{ line: raw.slice(0, 200), reason: "keine gültigen Zeilen erkannt" }],
+        meta: { mode: "fallback-failed" }
+      };
+    }
+
+    return { rows, skipped, meta: { mode: "fallback-token" } };
   }
 
   class TaktPlan{
     constructor(rows){
-      if(!rows || rows.length===0) throw new Error("Keine gültigen Zeilen erkannt.");
-      this.rows=rows;
-      this.roundsPerDay=ROUNDS_PER_DAY;
+      if(!rows || rows.length === 0){
+        throw new Error("Keine gültigen Zeilen erkannt.");
+      }
 
-      this.cycle=rows.filter(r=>normName(r.mitarbeiter)!=="BESETZT");
-      if(this.cycle.length===0) throw new Error("Alle Einträge sind BESETZT – kein Rotationszyklus möglich.");
+      this.rows = rows;
+      this.roundsPerDay = ROUNDS_PER_DAY;
 
-      this.startIndex=new Map();
-      this.cycle.forEach((r,i)=>{
-        const key=normName(r.mitarbeiter);
-        if(!this.startIndex.has(key)) this.startIndex.set(key,i);
+      this.cycle = rows.filter(r => normName(r.mitarbeiter) !== "BESETZT");
+
+      if(this.cycle.length === 0){
+        throw new Error("Alle Einträge sind BESETZT – kein Rotationszyklus möglich.");
+      }
+
+      this.startIndex = new Map();
+      this.cycle.forEach((r, i)=>{
+        const key = normName(r.mitarbeiter);
+        if(!this.startIndex.has(key)) this.startIndex.set(key, i);
       });
     }
+
     assignment(employee, dayKey, roundNo, weekMode="mon"){
-      if(roundNo<1 || roundNo>this.roundsPerDay) throw new Error(`Runde muss 1-${this.roundsPerDay} sein.`);
-      const empKey=normName(employee);
-      if(!this.startIndex.has(empKey)) throw new Error(`Mitarbeiter '${employee}' nicht im Plan gefunden.`);
+      if(roundNo < 1 || roundNo > this.roundsPerDay){
+        throw new Error(`Runde muss 1-${this.roundsPerDay} sein.`);
+      }
+
+      const empKey = normName(employee);
+      if(!this.startIndex.has(empKey)){
+        throw new Error(`Mitarbeiter '${employee}' nicht im Plan gefunden.`);
+      }
 
       const d = getDayIndex(dayKey, weekMode);
-      if(d < 0) throw new Error(`Ungültiger Tag: ${dayKey}`);
+      if(d < 0){
+        throw new Error(`Ungültiger Tag: ${dayKey}`);
+      }
 
-      const steps=d*this.roundsPerDay + (roundNo-1);
-      const start=this.startIndex.get(empKey);
-      const pos=(start+steps)%this.cycle.length;
+      const steps = d * this.roundsPerDay + (roundNo - 1);
+      const start = this.startIndex.get(empKey);
+      const pos = (start + steps) % this.cycle.length;
       return this.cycle[pos];
     }
+
     weeklyOverview(employee, mode="mon"){
       const order = mode === "sun"
         ? ["so","mo","di","mi","do","fr"]
         : ["mo","di","mi","do","fr"];
 
-      const out=[];
+      const out = [];
       for(const dayKey of order){
         const dayName = dayKeyToName(dayKey);
         for(let r=1; r<=this.roundsPerDay; r++){
-          const row=this.assignment(employee, dayKey, r, mode);
+          const row = this.assignment(employee, dayKey, r, mode);
           out.push({ tag: dayName, runde: r, station: row.bezeichnung, takt: row.takt });
         }
       }
       return out;
     }
+
     findEmployeesByStation(dayKey, roundNo, stationName, mode="mon"){
       const target = normName(stationName);
       const names = Array.from(this.startIndex.keys());
       const result = [];
+
       for(const key of names){
-        const employeeName = this.cycle.find(r => normName(r.mitarbeiter) === key).mitarbeiter;
+        const originalRow = this.cycle.find(r => normName(r.mitarbeiter) === key);
+        if(!originalRow) continue;
+
+        const employeeName = originalRow.mitarbeiter;
         const row = this.assignment(employeeName, dayKey, roundNo, mode);
+
         if(normName(row.bezeichnung) === target){
           result.push({ name: employeeName, station: row.bezeichnung, takt: row.takt });
         }
       }
+
       return result;
     }
   }
 
   function diagnostics(rows){
-    const takts=rows.map(r=>r.takt);
-    const uniq=new Set(takts);
-    const dups=takts.filter((t,idx)=>takts.indexOf(t)!==idx);
-    const min=Math.min(...takts);
-    const max=Math.max(...takts);
-    const missing=[];
-    for(let t=min; t<=max; t++){ if(!uniq.has(t)) missing.push(t); }
-    return { count: rows.length, uniq: uniq.size, min, max, dups: Array.from(new Set(dups)), missing };
+    if(!rows.length){
+      return {
+        count: 0,
+        uniq: 0,
+        min: null,
+        max: null,
+        dups: [],
+        missing: [],
+        occupiedCount: 0,
+        stationCount: 0,
+        employeeCount: 0
+      };
+    }
+
+    const takts = rows.map(r=>r.takt).filter(n=>Number.isFinite(n));
+    const uniq = new Set(takts);
+    const dups = takts.filter((t, idx)=>takts.indexOf(t) !== idx);
+    const min = takts.length ? Math.min(...takts) : null;
+    const max = takts.length ? Math.max(...takts) : null;
+    const missing = [];
+
+    if(min !== null && max !== null){
+      for(let t=min; t<=max; t++){
+        if(!uniq.has(t)) missing.push(t);
+      }
+    }
+
+    const occupiedCount = rows.filter(r => normName(r.mitarbeiter) === "BESETZT").length;
+    const stationCount = new Set(rows.map(r => normName(r.bezeichnung))).size;
+    const employeeCount = new Set(
+      rows.filter(r => normName(r.mitarbeiter) !== "BESETZT").map(r => normName(r.mitarbeiter))
+    ).size;
+
+    return {
+      count: rows.length,
+      uniq: uniq.size,
+      min,
+      max,
+      dups: Array.from(new Set(dups)),
+      missing,
+      occupiedCount,
+      stationCount,
+      employeeCount
+    };
   }
 
-  // DOM-Refs
   const haptOn = document.getElementById("haptOn");
   const haptOff = document.getElementById("haptOff");
 
@@ -522,36 +783,42 @@
   let plan = null;
   let employees = [];
   let selectedEmployee = null;
+  let lastParseInfo = null;
 
   function updateActiveStatus(){
     const state = loadState();
     let text = "Aktiver Plan: keiner";
+
     if(state.activeId && state.plans[state.activeId]){
       const p = state.plans[state.activeId];
       const stamp = p.updatedAt ? p.updatedAt.slice(0,16).replace("T"," ") : "";
       text = `Aktiver Plan: ${p.name} ${stamp ? "(" + stamp + ")" : ""}`;
     }
+
     elActiveStatus.textContent = text;
   }
 
   function refreshPlanSelect(){
     const state = loadState();
     const entries = Object.entries(state.plans)
-      .map(([id,p])=>({id, ...p}))
-      .sort((a,b)=>(b.updatedAt||"").localeCompare(a.updatedAt||""));
+      .map(([id, p])=>({ id, ...p }))
+      .sort((a,b)=>(b.updatedAt || "").localeCompare(a.updatedAt || ""));
 
-    elPlanSelect.innerHTML="";
-    const opt0=document.createElement("option");
-    opt0.value=""; opt0.textContent="— keinen auswählen —";
+    elPlanSelect.innerHTML = "";
+
+    const opt0 = document.createElement("option");
+    opt0.value = "";
+    opt0.textContent = "— keinen auswählen —";
     elPlanSelect.appendChild(opt0);
 
     for(const p of entries){
-      const opt=document.createElement("option");
-      opt.value=p.id;
+      const opt = document.createElement("option");
+      opt.value = p.id;
       const stamp = p.updatedAt ? p.updatedAt.slice(0,16).replace("T"," ") : "";
-      opt.textContent=`${p.name} (${stamp})`;
+      opt.textContent = `${p.name} (${stamp})`;
       elPlanSelect.appendChild(opt);
     }
+
     elPlanSelect.value = loadState().activeId || "";
     updateActiveStatus();
   }
@@ -559,16 +826,35 @@
   function renderDiagnostics(diag){
     const state = loadState();
     const active = state.activeId ? "Aktiv-Plan: JA" : "Aktiv-Plan: NEIN";
-    const warn = [];
-    if(diag.dups.length) warn.push(`Doppelt: ${diag.dups.join(", ")}`);
-    if(diag.missing.length) warn.push(`Fehlt: ${diag.missing.join(", ")}`);
-
     const pills = [];
+
     pills.push(`<span class="pill">Erkannt: <strong>${diag.count}</strong></span>`);
     pills.push(`<span class="pill">Zyklus: <strong>${plan ? plan.cycle.length : "-"}</strong></span>`);
     pills.push(`<span class="pill">Runden/Tag: <strong>${ROUNDS_PER_DAY}</strong></span>`);
+    pills.push(`<span class="pill">Mitarbeiter: <strong>${diag.employeeCount}</strong></span>`);
+    pills.push(`<span class="pill">Stationen: <strong>${diag.stationCount}</strong></span>`);
+    pills.push(`<span class="pill">BESETZT: <strong>${diag.occupiedCount}</strong></span>`);
+
+    if(diag.min !== null && diag.max !== null){
+      pills.push(`<span class="pill">Takte: <strong>${diag.min}–${diag.max}</strong></span>`);
+    }
+
     pills.push(`<span class="pill">${active}</span>`);
-    if(warn.length) pills.push(`<span class="pill">Hinweis: <strong>${warn.join(" • ")}</strong></span>`);
+
+    if(diag.dups.length){
+      pills.push(`<span class="pill">Doppelt: <strong>${diag.dups.join(", ")}</strong></span>`);
+    }
+
+    if(diag.missing.length){
+      const preview = diag.missing.length > 10
+        ? diag.missing.slice(0, 10).join(", ") + " …"
+        : diag.missing.join(", ");
+      pills.push(`<span class="pill">Fehlt: <strong>${preview}</strong></span>`);
+    }
+
+    if(lastParseInfo && lastParseInfo.skipped && lastParseInfo.skipped.length){
+      pills.push(`<span class="pill">Übersprungen: <strong>${lastParseInfo.skipped.length}</strong></span>`);
+    }
 
     diagPills.innerHTML = pills.join("");
   }
@@ -588,43 +874,54 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = name;
+
       if(selectedEmployee && normName(selectedEmployee) === normName(name)){
         btn.classList.add("active");
       }
+
       btn.addEventListener("click", ()=>{
         haptic("tap");
         selectedEmployee = name;
+        saveUiState();
         empBar.querySelectorAll("button").forEach(b=>b.classList.remove("active"));
         btn.classList.add("active");
+
         try{
           showWeek();
         } catch(e){
           showErr(e.message || String(e));
         }
       });
+
       empBar.appendChild(btn);
     });
   }
 
-  function populateStationDropdown(){
+  function populateStationDropdown(keepCurrent=true){
+    const prev = keepCurrent ? elSearchStation.value : "";
     elSearchStation.innerHTML = "";
+
     if(!plan){
       const opt = document.createElement("option");
-      opt.value = ""; opt.textContent = "Kein Plan";
+      opt.value = "";
+      opt.textContent = "Kein Plan";
       elSearchStation.appendChild(opt);
       return;
     }
+
     const stations = Array.from(
       new Set(
         plan.rows
-          .filter(r=>normName(r.mitarbeiter)!=="BESETZT")
-          .map(r=>r.bezeichnung.trim())
+          .filter(r => normName(r.mitarbeiter) !== "BESETZT")
+          .map(r => r.bezeichnung.trim())
+          .filter(Boolean)
       )
     ).sort((a,b)=>normName(a).localeCompare(normName(b)));
 
     if(!stations.length){
       const opt = document.createElement("option");
-      opt.value = ""; opt.textContent = "Keine Stationen";
+      opt.value = "";
+      opt.textContent = "Keine Stationen";
       elSearchStation.appendChild(opt);
       return;
     }
@@ -635,15 +932,32 @@
       opt.textContent = st;
       elSearchStation.appendChild(opt);
     });
+
+    const ui = loadJSON(UI_KEY, { haptics:"on" });
+    const wanted = prev || ui.searchStation || "";
+
+    if(wanted && stations.includes(wanted)){
+      elSearchStation.value = wanted;
+    }
   }
 
-  function applyPlan(){
+  function applyPlan(options = {}){
+    const {
+      showSuccess = true,
+      keepResult = false
+    } = options;
+
     const text = elTable.value;
     hideWeek();
-    elResult.classList.add("hide");
+    if(!keepResult) elResult.classList.add("hide");
 
-    const rows = parseTable(text);
-    const diag = diagnostics(rows);
+    const parsed = parseTable(text);
+    const rows = parsed.rows;
+    lastParseInfo = parsed;
+
+    if(!rows.length){
+      throw new Error("Keine gültigen Zeilen erkannt.");
+    }
 
     const newPlan = new TaktPlan(rows);
     plan = newPlan;
@@ -651,14 +965,37 @@
     employees = Array.from(new Set(plan.cycle.map(r=>r.mitarbeiter.trim())))
       .sort((a,b)=>normName(a).localeCompare(normName(b)));
 
-    selectedEmployee = employees.length ? employees[0] : null;
+    const ui = loadJSON(UI_KEY, { haptics:"on" });
+    const wantedEmployee = ui.selectedEmployee;
+    selectedEmployee = employees.find(n => normName(n) === normName(wantedEmployee)) || employees[0] || null;
+
     renderEmployeeButtons();
-    populateStationDropdown();
+    populateStationDropdown(true);
     setEnabled(!!plan);
 
+    const diag = diagnostics(rows);
     renderDiagnostics(diag);
+    saveUiState();
 
-    showOk(`Plan angewendet. Mitarbeiter antippen für Wochenübersicht, Stations-Suche ist aktiv.`);
+    if(selectedEmployee){
+      try{
+        showWeek();
+      } catch {}
+    }
+
+    if(showSuccess){
+      if(parsed.skipped.length){
+        const preview = parsed.skipped.slice(0, 3).map(x => safeHtml(x.reason)).join(" • ");
+        showWarn(`
+          <div><strong>Plan angewendet, aber mit Hinweisen.</strong></div>
+          <div style="margin-top:8px;">Erkannte Zeilen: <strong>${rows.length}</strong></div>
+          <div>Übersprungene Zeilen: <strong>${parsed.skipped.length}</strong></div>
+          <div class="small" style="margin-top:8px;">Gründe: ${preview}${parsed.skipped.length > 3 ? " • …" : ""}</div>
+        `);
+      } else {
+        showOk(`Plan angewendet. Mitarbeiter antippen für Wochenübersicht, Stations-Suche ist aktiv.`);
+      }
+    }
   }
 
   function showWeek(){
@@ -673,13 +1010,20 @@
     elWeek.classList.remove("hide");
     elWeek.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-        <div style="font-weight:900;">Wochenübersicht (${label}): ${employee}</div>
+        <div style="font-weight:900;">Wochenübersicht (${label}): ${safeHtml(employee)}</div>
         <div class="small">Runden/Tag: ${plan.roundsPerDay}</div>
       </div>
       <table>
         <thead><tr><th>Tag</th><th>R</th><th>Station</th><th>Takt</th></tr></thead>
         <tbody>
-          ${data.map(r=>`<tr><td>${r.tag}</td><td>${r.runde}</td><td>${r.station}</td><td class="mono">${r.takt}</td></tr>`).join("")}
+          ${data.map(r=>`
+            <tr>
+              <td>${safeHtml(r.tag)}</td>
+              <td>${r.runde}</td>
+              <td>${safeHtml(r.station)}</td>
+              <td class="mono">${r.takt}</td>
+            </tr>
+          `).join("")}
         </tbody>
       </table>
     `;
@@ -687,11 +1031,12 @@
 
   function searchStation(){
     if(!plan) throw new Error("Bitte erst Plan anwenden.");
+
     const dayKey = elSearchDay.value;
     const roundNo = parseInt(elSearchRound.value, 10);
     const mode = elWeekStart.value || "mon";
-
     const station = elSearchStation.value;
+
     if(!station){
       throw new Error("Bitte eine Station auswählen.");
     }
@@ -699,24 +1044,26 @@
     const hits = plan.findEmployeesByStation(dayKey, roundNo, station, mode);
     const dayName = dayKeyToName(dayKey);
 
+    saveUiState();
+
     if(!hits.length){
       showErr(`Kein Mitarbeiter mit Station „${station}“ in Runde ${roundNo} am ${dayName} gefunden.`);
       return;
     }
 
     const list = hits.map(h => `
-      <div style="padding:8px 0;">
-        <div style="font-weight:900;">${h.name}</div>
-        <div style="font-size:14px;">${h.station}</div>
+      <div style="padding:8px 0; border-bottom:1px solid var(--border);">
+        <div style="font-weight:900;">${safeHtml(h.name)}</div>
+        <div style="font-size:14px;">${safeHtml(h.station)}</div>
         <div class="mono" style="font-size:12px; color:var(--muted);">Takt ${h.takt}</div>
       </div>
     `).join("");
 
     showOk(`
       <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-        <span class="pill">${dayName}</span>
+        <span class="pill">${safeHtml(dayName)}</span>
         <span class="pill">Runde <strong>${roundNo}</strong></span>
-        <span class="pill">Station <strong>${station}</strong></span>
+        <span class="pill">Station <strong>${safeHtml(station)}</strong></span>
       </div>
       <div style="margin-top:10px;">
         ${list}
@@ -725,72 +1072,89 @@
   }
 
   function saveNewPlan(){
-    const name=(elPlanName.value||"").trim();
-    if(!name) throw new Error("Bitte einen Namen eingeben (z.B. 'Standardwoche').");
-    const text=elTable.value;
+    const name = (elPlanName.value || "").trim();
+    if(!name) throw new Error("Bitte einen Namen eingeben (z. B. 'Standardwoche').");
+
+    const text = elTable.value;
     if(!text.trim()) throw new Error("Plan-Text ist leer.");
 
-    const rows=parseTable(text);
-    new TaktPlan(rows); // Validierung
+    const parsed = parseTable(text);
+    if(!parsed.rows.length) throw new Error("Plan enthält keine gültigen Zeilen.");
 
-    const state=loadState();
-    const id=uid();
-    state.plans[id]={ name, text, rounds: ROUNDS_PER_DAY, updatedAt: nowISO() };
-    state.activeId=id;
+    new TaktPlan(parsed.rows);
+
+    const state = loadState();
+    const exists = Object.values(state.plans).some(p => normName(p.name) === normName(name));
+    if(exists) throw new Error("Ein Plan mit diesem Namen existiert bereits.");
+
+    const id = uid();
+    state.plans[id] = { name, text, rounds: ROUNDS_PER_DAY, updatedAt: nowISO() };
+    state.activeId = id;
     saveState(state);
     refreshPlanSelect();
   }
 
   function overwriteActivePlan(){
-    const state=loadState();
-    const id=state.activeId;
+    const state = loadState();
+    const id = state.activeId;
+
     if(!id || !state.plans[id]) throw new Error("Kein aktiver Plan ausgewählt.");
-    const text=elTable.value;
+
+    const text = elTable.value;
     if(!text.trim()) throw new Error("Plan-Text ist leer.");
 
-    const rows=parseTable(text);
-    new TaktPlan(rows); // Validierung
+    const parsed = parseTable(text);
+    if(!parsed.rows.length) throw new Error("Plan enthält keine gültigen Zeilen.");
 
-    state.plans[id]={ ...state.plans[id], text, rounds: ROUNDS_PER_DAY, updatedAt: nowISO() };
+    new TaktPlan(parsed.rows);
+
+    state.plans[id] = { ...state.plans[id], text, rounds: ROUNDS_PER_DAY, updatedAt: nowISO() };
     saveState(state);
     refreshPlanSelect();
   }
 
   function loadSelectedPlan(){
-    const state=loadState();
-    const id=elPlanSelect.value;
+    const state = loadState();
+    const id = elPlanSelect.value;
     if(!id || !state.plans[id]) throw new Error("Kein gespeicherter Plan ausgewählt.");
-    const p=state.plans[id];
 
-    elTable.value=p.text || "";
+    const p = state.plans[id];
+    elTable.value = p.text || "";
     saveDraft();
 
-    state.activeId=id;
+    state.activeId = id;
     saveState(state);
     refreshPlanSelect();
 
-    applyPlan();
-    showOk(`Plan geladen & angewendet: <strong>${p.name}</strong>`);
+    applyPlan({ showSuccess: false });
+    showOk(`Plan geladen & angewendet: <strong>${safeHtml(p.name)}</strong>`);
   }
 
   function deleteSelectedPlan(){
-    const state=loadState();
-    const id=elPlanSelect.value;
+    const state = loadState();
+    const id = elPlanSelect.value;
     if(!id || !state.plans[id]) throw new Error("Kein gespeicherter Plan ausgewählt.");
-    const name=state.plans[id].name || id;
+
+    const name = state.plans[id].name || id;
+
+    if(!confirm(`Plan wirklich löschen?\n\n${name}`)) return;
 
     delete state.plans[id];
-    if(state.activeId===id) state.activeId=null;
+    if(state.activeId === id) state.activeId = null;
     saveState(state);
     refreshPlanSelect();
 
-    showOk(`Plan gelöscht: <strong>${name}</strong>`);
+    showOk(`Plan gelöscht: <strong>${safeHtml(name)}</strong>`);
+
+    if(!loadState().activeId){
+      updateActiveStatus();
+    }
   }
 
-  // init
   (function init(){
     const ui = loadJSON(UI_KEY, { haptics:"on" });
     setHaptics(ui.haptics || "on");
+    restoreUiState();
 
     const draft = loadDraft();
     if(draft && draft.text) elTable.value = draft.text;
@@ -798,41 +1162,88 @@
     refreshPlanSelect();
     setEnabled(false);
     populateStationDropdown();
+
+    const state = loadState();
+    if(state.activeId && state.plans[state.activeId]){
+      const p = state.plans[state.activeId];
+      elTable.value = p.text || "";
+      saveDraft();
+
+      try{
+        applyPlan({ showSuccess: false, keepResult: true });
+        showOk(`Aktiver Plan automatisch geladen: <strong>${safeHtml(p.name)}</strong>`, false);
+      } catch(e){
+        showErr("Aktiver gespeicherter Plan konnte nicht automatisch geladen werden.", false);
+      }
+    }
   })();
 
-  // events
-  haptOn.addEventListener("click", ()=>{ setHaptics("on"); haptic("tap"); });
-  haptOff.addEventListener("click", ()=>{ setHaptics("off"); });
+  haptOn.addEventListener("click", ()=>{
+    setHaptics("on");
+    haptic("tap");
+  });
 
-  elTable.addEventListener("input", saveDraft);
+  haptOff.addEventListener("click", ()=>{
+    setHaptics("off");
+  });
+
+  elTable.addEventListener("input", ()=>{
+    saveDraft();
+  });
+
+  elWeekStart.addEventListener("change", ()=>{
+    saveUiState();
+    if(plan && selectedEmployee){
+      try{
+        showWeek();
+      } catch(e){
+        hideWeek();
+        showErr(e.message || String(e));
+      }
+    } else {
+      hideWeek();
+    }
+  });
+
+  elSearchDay.addEventListener("change", saveUiState);
+  elSearchRound.addEventListener("change", saveUiState);
+  elSearchStation.addEventListener("change", saveUiState);
+  elPlanName.addEventListener("input", saveUiState);
 
   elApplyBtn.addEventListener("click", ()=>{
     try{
       haptic("tap");
       applyPlan();
     } catch(e){
-      plan=null;
+      plan = null;
       setEnabled(false);
-      populateStationDropdown();
+      populateStationDropdown(false);
       empBar.innerHTML = "";
       selectedEmployee = null;
+      hideWeek();
+      diagPills.innerHTML = "";
       showErr(e.message || String(e));
+      saveUiState();
     }
   });
 
   elClear.addEventListener("click", ()=>{
     haptic("tap");
-    elTable.value="";
+    elTable.value = "";
     saveDraft();
-    plan=null;
-    employees=[];
-    empBar.innerHTML="";
-    selectedEmployee=null;
+
+    plan = null;
+    employees = [];
+    empBar.innerHTML = "";
+    selectedEmployee = null;
     setEnabled(false);
     hideWeek();
     elResult.classList.add("hide");
-    diagPills.innerHTML="";
-    populateStationDropdown();
+    diagPills.innerHTML = "";
+    lastParseInfo = null;
+
+    populateStationDropdown(false);
+    saveUiState();
   });
 
   elSaveNew.addEventListener("click", ()=>{
@@ -840,7 +1251,7 @@
       haptic("tap");
       saveNewPlan();
       const st = loadState();
-      showOk(`Gespeichert und aktiviert: <strong>${st.plans[st.activeId].name}</strong>`);
+      showOk(`Gespeichert und aktiviert: <strong>${safeHtml(st.plans[st.activeId].name)}</strong>`);
     } catch(e){
       showErr(e.message || String(e));
     }
@@ -882,11 +1293,6 @@
       showErr(e.message || String(e));
     }
   });
-
-  // Wochenstart-Änderung: nur Ansicht zurücksetzen, neue Übersicht kommt beim nächsten Mitarbeiter-Klick
-  elWeekStart.addEventListener("change", ()=>{ hideWeek(); });
 </script>
 </body>
 </html>
-
-
