@@ -310,7 +310,7 @@
       </div>
     </div>
 
-    <!-- 2 Mitarbeiter -->
+        <!-- 2 Mitarbeiter -->
     <div class="card">
       <div class="grid2">
         <div>
@@ -328,54 +328,16 @@
       </div>
     </div>
 
-    <!-- 3 Status -->
+    <!-- 3 Wochenübersicht -->
+    <div id="week" class="card hide"></div>
+
+    <!-- 4 Status -->
     <div class="card">
       <div id="activeStatus" class="small">Aktiver Plan: keiner</div>
     </div>
 
-    <!-- 4 Ergebnis -->
+    <!-- 5 Ergebnis -->
     <div id="result" class="card result hide"></div>
-
-    <!-- 5 Takt Suche -->
-    <div class="card">
-      <label>Takt-Suche</label>
-
-      <div class="grid2">
-        <div>
-          <label>Tag</label>
-          <select id="searchDay">
-            <option value="mo">Mo</option>
-            <option value="di">Di</option>
-            <option value="mi">Mi</option>
-            <option value="do">Do</option>
-            <option value="fr">Fr</option>
-            <option value="sa">Sa</option>
-            <option value="so">So</option>
-          </select>
-        </div>
-
-        <div>
-          <label>Runde</label>
-          <select id="searchRound">
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="grid2" style="margin-top:10px;">
-        <div>
-          <label>Station</label>
-          <select id="searchStation"></select>
-        </div>
-
-        <div style="display:flex; align-items:flex-end;">
-          <button class="btn primary" id="searchBtn">Suchen</button>
-        </div>
-      </div>
-    </div>
 
     <!-- 6 Gruppenansicht -->
     <div class="card">
@@ -420,9 +382,47 @@
       <div id="groupView" class="hide" style="margin-top:12px;"></div>
     </div>
 
-    <!-- 7 Wochenübersicht -->
-    <div id="week" class="card hide"></div>
+    <!-- 7 Takt Suche -->
+    <div class="card">
+      <label>Takt-Suche</label>
 
+      <div class="grid2">
+        <div>
+          <label>Tag</label>
+          <select id="searchDay">
+            <option value="mo">Mo</option>
+            <option value="di">Di</option>
+            <option value="mi">Mi</option>
+            <option value="do">Do</option>
+            <option value="fr">Fr</option>
+            <option value="sa">Sa</option>
+            <option value="so">So</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Runde</label>
+          <select id="searchRound">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:10px;">
+        <div>
+          <label>Station</label>
+          <select id="searchStation"></select>
+        </div>
+
+        <div style="display:flex; align-items:flex-end;">
+          <button class="btn primary" id="searchBtn">Suchen</button>
+        </div>
+      </div>
+    </div>
+    
     <!-- 8 Plan einfügen -->
     <div class="card">
       <label>Plan einfügen (OCR / Tabelle)</label>
@@ -456,9 +456,9 @@
   const DAY_KEYS = ["mo","di","mi","do","fr","sa","so"];
   const DAY_NAMES = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 
-  const STORAGE_KEY = "taktplan_saved_v9";
-  const DRAFT_KEY   = "taktplan_draft_v4";
-  const UI_KEY      = "taktplan_ui_v7";
+  const STORAGE_KEY = "taktplan_saved_v10";
+  const DRAFT_KEY   = "taktplan_draft_v5";
+  const UI_KEY      = "taktplan_ui_v8";
 
   const STATION_GROUPS = [
     {
