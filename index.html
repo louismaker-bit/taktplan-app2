@@ -488,82 +488,89 @@
     elWeek.innerHTML = "";
   }
 
-  function parseTable(text){
-    const raw = cleanOCRText(text);
-    if(!raw) return { rows: [], skipped: [], meta: { mode: "empty" } };
+function parseTable(text){
+  const raw = cleanOCRText(text);
+  if(!raw) return { rows: [], skipped: [], meta: { mode: "empty" } };
 
-    const rows = [];
-    const skipped = [];
-    const lines = raw.split(/\n+/).map(x => x.trim()).filter(Boolean);
+  const rows = [];
+  const skipped = [];
 
-    const looksLikeDelimitedTable = lines.some(line => /[;\t,]/.test(line));
+  const lines = raw.split(/\n+/).map(x => x.trim()).filter(Boolean);
+  const looksLikeDelimitedTable = lines.some(line => /[;\t,]/.test(line));
 
-    if(looksLikeDelimitedTable){
-      for(const line of lines){
-        const parts = line.split(/[\t;,]+/).map(x => x.trim()).filter(Boolean);
-        if(parts.length < 3){
-          skipped.push({ line, reason: "zu wenig Spalten" });
-          continue;
-        }
+  // 1) Echte Tabelle mit Trennzeichen
+  if(looksLikeDelimitedTable){
+    for(const line of lines){
+      const parts = line.split(/[\t;,]+/).map(x => x.trim()).filter(Boolean);
 
-        let takt = null;
-        let idx = -1;
-
-        for(let i=0; i<Math.min(2, parts.length); i++){
-          if(isLikelyNumber(parts[i])){
-            takt = toNumber(parts[i]);
-            idx = i;
-            break;
-          }
-        }
-
-        if(takt === null || idx < 0){
-          skipped.push({ line, reason: "keine Taktnummer erkannt" });
-          continue;
-        }
-
-        if(idx + 2 >= parts.length){
-          skipped.push({ line, reason: "Bezeichnung/Mitarbeiter fehlt" });
-          continue;
-        }
-
-        const bezeichnung = (parts[idx + 1] || "").trim();
-        const mitarbeiter = (parts[idx + 2] || "").trim();
-
-        if(!bezeichnung || !mitarbeiter){
-          skipped.push({ line, reason: "Bezeichnung oder Mitarbeiter leer" });
-          continue;
-        }
-
-        rows.push({ takt, bezeichnung, mitarbeiter });
+      if(parts.length < 3){
+        skipped.push({ line, reason: "zu wenig Spalten" });
+        continue;
       }
 
-      rows.sort((a,b)=>a.takt-b.takt);
-      return { rows, skipped, meta: { mode: "delimited" } };
+      let takt = null;
+      let idx = -1;
+
+      for(let i=0; i<Math.min(2, parts.length); i++){
+        if(isLikelyNumber(parts[i])){
+          takt = toNumber(parts[i]);
+          idx = i;
+          break;
+        }
+      }
+
+      if(takt === null || idx < 0){
+        skipped.push({ line, reason: "keine Taktnummer erkannt" });
+        continue;
+      }
+
+      if(idx + 2 >= parts.length){
+        skipped.push({ line, reason: "Bezeichnung/Mitarbeiter fehlt" });
+        continue;
+      }
+
+      const bezeichnung = (parts[idx + 1] || "").trim();
+      const mitarbeiter = (parts[idx + 2] || "").trim();
+
+      if(!bezeichnung || !mitarbeiter){
+        skipped.push({ line, reason: "Bezeichnung oder Mitarbeiter leer" });
+        continue;
+      }
+
+      rows.push({ takt, bezeichnung, mitarbeiter });
     }
 
+    rows.sort((a,b)=>a.takt-b.takt);
+    return { rows, skipped, meta: { mode: "delimited" } };
+  }
+
+  // 2) Mehrere saubere OCR-Zeilen, z. B.:
+  // "1 Airbag DRILON"
+  // "2 Bepl. Re. BESETZT"
+  // usw.
+  const multiLineLooksUseful =
+    lines.length >= 3 &&
+    lines.filter(line => {
+      const tokens = line.split(/\s+/).filter(Boolean);
+      return tokens.length >= 3 && isLikelyNumber(tokens[0]);
+    }).length >= Math.ceil(lines.length * 0.5);
+
+  if(multiLineLooksUseful){
     for(const line of lines){
       const tokens = line.split(/\s+/).filter(Boolean);
+
       if(tokens.length < 3){
         skipped.push({ line, reason: "zu kurz" });
         continue;
       }
 
-      let firstNumIdx = -1;
-      for(let i=0; i<Math.min(3, tokens.length); i++){
-        if(isLikelyNumber(tokens[i])){
-          firstNumIdx = i;
-          break;
-        }
-      }
-
-      if(firstNumIdx < 0){
+      if(!isLikelyNumber(tokens[0])){
         skipped.push({ line, reason: "keine Taktnummer am Zeilenanfang erkannt" });
         continue;
       }
 
-      const takt = toNumber(tokens[firstNumIdx]);
-      const content = tokens.slice(firstNumIdx + 1);
+      const takt = toNumber(tokens[0]);
+      const content = tokens.slice(1);
 
       if(content.length < 2){
         skipped.push({ line, reason: "zu wenig Inhalte nach Taktnummer" });
@@ -581,48 +588,65 @@
       rows.push({ takt, bezeichnung, mitarbeiter });
     }
 
-    if(rows.length > 0){
-      rows.sort((a,b)=>a.takt-b.takt);
-      return { rows, skipped, meta: { mode: "linewise" } };
-    }
-
-    const cleaned = raw.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
-    const tokens = cleaned.split(" ").filter(Boolean);
-
-    let i = 0;
-    while(i < tokens.length){
-      if(!isLikelyNumber(tokens[i])){ i++; continue; }
-
-      const takt = toNumber(tokens[i]);
-      i++;
-
-      const content = [];
-      while(i < tokens.length && !isLikelyNumber(tokens[i])){
-        content.push(tokens[i]);
-        i++;
-      }
-
-      if(content.length >= 2){
-        const mitarbeiter = content[content.length - 1];
-        const bezeichnung = content.slice(0, -1).join(" ").trim();
-        if(bezeichnung && mitarbeiter){
-          rows.push({ takt, bezeichnung, mitarbeiter });
-        }
-      }
-    }
-
     rows.sort((a,b)=>a.takt-b.takt);
+    return { rows, skipped, meta: { mode: "linewise" } };
+  }
 
-    if(!rows.length){
-      return {
-        rows: [],
-        skipped: [{ line: raw.slice(0, 200), reason: "keine gültigen Zeilen erkannt" }],
-        meta: { mode: "fallback-failed" }
-      };
+  // 3) Fallback für EINZEILIGES OCR:
+  // "1 Airbag DRILON 2 Bepl. Re. BESETZT 3 Ablage Li. FLORIAN ..."
+  const tokens = raw.replace(/\n/g, " ").split(/\s+/).filter(Boolean);
+
+  let i = 0;
+  while(i < tokens.length){
+    if(!isLikelyNumber(tokens[i])){
+      i++;
+      continue;
     }
 
-    return { rows, skipped, meta: { mode: "fallback-token" } };
+    const takt = toNumber(tokens[i]);
+    const startToken = tokens[i];
+    i++;
+
+    const content = [];
+    while(i < tokens.length && !isLikelyNumber(tokens[i])){
+      content.push(tokens[i]);
+      i++;
+    }
+
+    if(content.length < 2){
+      skipped.push({
+        line: `${startToken} ${content.join(" ")}`.trim(),
+        reason: "zu wenig Inhalte nach Taktnummer"
+      });
+      continue;
+    }
+
+    const mitarbeiter = content[content.length - 1];
+    const bezeichnung = content.slice(0, -1).join(" ").trim();
+
+    if(!bezeichnung || !mitarbeiter){
+      skipped.push({
+        line: `${startToken} ${content.join(" ")}`.trim(),
+        reason: "Bezeichnung oder Mitarbeiter leer"
+      });
+      continue;
+    }
+
+    rows.push({ takt, bezeichnung, mitarbeiter });
   }
+
+  rows.sort((a,b)=>a.takt-b.takt);
+
+  if(!rows.length){
+    return {
+      rows: [],
+      skipped: [{ line: raw.slice(0, 200), reason: "keine gültigen Zeilen erkannt" }],
+      meta: { mode: "fallback-failed" }
+    };
+  }
+
+  return { rows, skipped, meta: { mode: "fallback-token" } };
+}
 
   class TaktPlan{
     constructor(rows){
