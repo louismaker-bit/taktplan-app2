@@ -246,6 +246,39 @@
         font-size: 12px;
       }
     }
+
+    .group-list{
+      margin-top: 10px;
+      display:grid;
+      gap:8px;
+    }
+
+    .group-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card);
+    }
+
+    .group-station{
+      font-weight: 900;
+      min-width: 0;
+    }
+
+    .group-employee{
+      color: var(--text);
+      text-align: right;
+      min-width: 0;
+      word-break: break-word;
+    }
+
+    .group-meta{
+      margin-top: 8px;
+    }
   </style>
 </head>
 
@@ -295,18 +328,15 @@
       </div>
     </div>
 
-    <!-- 3 Wochenübersicht -->
-    <div id="week" class="card hide"></div>
-
-    <!-- 4 Status -->
+    <!-- 3 Status -->
     <div class="card">
       <div id="activeStatus" class="small">Aktiver Plan: keiner</div>
     </div>
 
-    <!-- 5 Ergebnis -->
+    <!-- 4 Ergebnis -->
     <div id="result" class="card result hide"></div>
 
-    <!-- 6 Takt Suche -->
+    <!-- 5 Takt Suche -->
     <div class="card">
       <label>Takt-Suche</label>
 
@@ -347,7 +377,53 @@
       </div>
     </div>
 
-    <!-- 7 Plan einfügen -->
+    <!-- 6 Gruppenansicht -->
+    <div class="card">
+      <label>Gruppenansicht</label>
+
+      <div class="grid2">
+        <div>
+          <label>Tag</label>
+          <select id="groupDay">
+            <option value="mo">Mo</option>
+            <option value="di">Di</option>
+            <option value="mi">Mi</option>
+            <option value="do">Do</option>
+            <option value="fr">Fr</option>
+            <option value="sa">Sa</option>
+            <option value="so">So</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Runde</label>
+          <select id="groupRound">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:10px;">
+        <div>
+          <label>Gruppe</label>
+          <select id="groupSelect"></select>
+        </div>
+
+        <div style="display:flex; align-items:flex-end;">
+          <button class="btn primary" id="groupBtn">Anzeigen</button>
+        </div>
+      </div>
+
+      <div id="groupView" class="hide" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- 7 Wochenübersicht -->
+    <div id="week" class="card hide"></div>
+
+    <!-- 8 Plan einfügen -->
     <div class="card">
       <label>Plan einfügen (OCR / Tabelle)</label>
 
@@ -361,7 +437,7 @@
       <div id="diagPills"></div>
     </div>
 
-    <!-- 8 Plan speichern -->
+    <!-- 9 Plan speichern -->
     <div class="card">
       <label>Plan speichern</label>
 
@@ -380,9 +456,32 @@
   const DAY_KEYS = ["mo","di","mi","do","fr","sa","so"];
   const DAY_NAMES = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 
-  const STORAGE_KEY = "taktplan_saved_v8";
-  const DRAFT_KEY   = "taktplan_draft_v3";
-  const UI_KEY      = "taktplan_ui_v6";
+  const STORAGE_KEY = "taktplan_saved_v9";
+  const DRAFT_KEY   = "taktplan_draft_v4";
+  const UI_KEY      = "taktplan_ui_v7";
+
+  const STATION_GROUPS = [
+    {
+      key: "a",
+      name: "Gruppe A",
+      stations: ["BLENDE RE", "BLENDE LI", "AIRBAG"]
+    },
+    {
+      key: "b",
+      name: "Gruppe B",
+      stations: ["SITZE RE", "SITZE LI", "ABLAGE RE", "ABLAGE LI"]
+    },
+    {
+      key: "c",
+      name: "Gruppe C",
+      stations: ["T E R", "T E L", "T V R", "T V L", "SCHLOSS", "RINGE RE", "RINGE LI", "BEPL RE", "BEPL LI"]
+    },
+    {
+      key: "d",
+      name: "Gruppe D",
+      stations: ["FOLIE RECHTS", "FOLIE LINKS"]
+    }
+  ];
 
   function normName(s){
     return (s || "")
@@ -393,6 +492,22 @@
       .replace(/Ö/g, "OE")
       .replace(/Ü/g, "UE")
       .replace(/ß/g, "SS");
+  }
+
+  function normStation(s){
+    return normName(s)
+      .replace(/[._,;:()/-]/g, " ")
+      .replace(/\bRE\b/g, "RE")
+      .replace(/\bLI\b/g, "LI")
+      .replace(/\bLINKS\b/g, "LINKS")
+      .replace(/\bRECHTS\b/g, "RECHTS")
+      .replace(/\bTEL\b/g, "T E L")
+      .replace(/\bTER\b/g, "T E R")
+      .replace(/\bTVR\b/g, "T V R")
+      .replace(/\bTVL\b/g, "T V L")
+      .replace(/\bBEPL\b/g, "BEPL")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   function safeHtml(str){
@@ -461,33 +576,23 @@
   function cleanOCRText(text){
     return (text || "")
       .replace(/\r/g, "\n")
-
-      // häufige OCR-Sonderzeichen
       .replace(/[|¦]/g, " ")
       .replace(/[•·●]/g, " ")
       .replace(/[–—−]/g, "-")
       .replace(/[“”„"]/g, '"')
       .replace(/[‘’]/g, "'")
-
-      // typische BESETZT-Fehler
       .replace(/\bB\s*E\s*S\s*E\s*T\s*Z\s*T\b/gi, "BESETZT")
       .replace(/\bBESET2T\b/gi, "BESETZT")
       .replace(/\bBE5ETZT\b/gi, "BESETZT")
       .replace(/\b8ESETZT\b/gi, "BESETZT")
-
-      // Müll vor Zahlen bereinigen
       .replace(/[•·●]+\s*-\s*(\d+)/g, " $1")
       .replace(/[|¦]+\s*-\s*(\d+)/g, " $1")
       .replace(/\bl\s*-\s*(\d+)/gi, " $1")
       .replace(/\bI\s*-\s*(\d+)/g, " $1")
       .replace(/\.\s*-\s*(\d+)/g, " $1")
       .replace(/-\s*(\d+)/g, " $1")
-
-      // falls Sonderzeichen direkt an Zahl kleben
       .replace(/([A-Za-zÄÖÜäöüß])(\d{1,2}\b)/g, "$1 $2")
       .replace(/([^\d\s])(\d{1,2}\b)/g, " $2")
-
-      // mehrfache Leerzeichen normalisieren
       .replace(/[ \t]+/g, " ")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
@@ -521,6 +626,9 @@
     ui.searchStation = elSearchStation.value;
     ui.selectedEmployee = selectedEmployee;
     ui.planName = elPlanName.value;
+    ui.groupDay = elGroupDay.value;
+    ui.groupRound = elGroupRound.value;
+    ui.groupKey = elGroupSelect.value;
     saveJSON(UI_KEY, ui);
   }
 
@@ -531,6 +639,8 @@
     if(ui.searchDay) elSearchDay.value = ui.searchDay;
     if(ui.searchRound) elSearchRound.value = ui.searchRound;
     if(ui.planName) elPlanName.value = ui.planName;
+    if(ui.groupDay) elGroupDay.value = ui.groupDay;
+    if(ui.groupRound) elGroupRound.value = ui.groupRound;
   }
 
   function setHaptics(v){
@@ -590,6 +700,11 @@
     elWeek.innerHTML = "";
   }
 
+  function hideGroupView(){
+    elGroupView.classList.add("hide");
+    elGroupView.innerHTML = "";
+  }
+
   function parseTable(text){
     const raw = cleanOCRText(text);
     if(!raw) return { rows: [], skipped: [], meta: { mode: "empty" } };
@@ -600,7 +715,6 @@
     const lines = raw.split(/\n+/).map(x => x.trim()).filter(Boolean);
     const looksLikeDelimitedTable = lines.some(line => /[;\t,]/.test(line));
 
-    // 1) echte Tabelle mit ; , oder Tab
     if(looksLikeDelimitedTable){
       for(const line of lines){
         const parts = line.split(/[\t;,]+/).map(x => x.trim()).filter(Boolean);
@@ -646,7 +760,6 @@
       return { rows, skipped, meta: { mode: "delimited" } };
     }
 
-    // 2) brauchbare Mehrzeilen-OCR
     const multiLineLooksUseful =
       lines.length >= 3 &&
       lines.filter(line => {
@@ -691,7 +804,6 @@
       return { rows, skipped, meta: { mode: "linewise" } };
     }
 
-    // 3) einzeilige OCR-Kette
     const tokens = raw.replace(/\n/g, " ").split(/\s+/).filter(Boolean);
 
     let i = 0;
@@ -823,6 +935,41 @@
 
       return result;
     }
+
+    groupAssignments(dayKey, roundNo, groupKey, mode="mon"){
+      const group = STATION_GROUPS.find(g => g.key === groupKey);
+      if(!group) throw new Error("Ungültige Gruppe.");
+
+      const names = Array.from(this.startIndex.keys());
+      const targetStations = new Set(group.stations.map(normStation));
+      const result = [];
+
+      for(const key of names){
+        const originalRow = this.cycle.find(r => normName(r.mitarbeiter) === key);
+        if(!originalRow) continue;
+
+        const employeeName = originalRow.mitarbeiter;
+        const row = this.assignment(employeeName, dayKey, roundNo, mode);
+        const stationKey = normStation(row.bezeichnung);
+
+        if(targetStations.has(stationKey)){
+          result.push({
+            name: employeeName,
+            station: row.bezeichnung,
+            takt: row.takt,
+            stationKey
+          });
+        }
+      }
+
+      const ordered = [];
+      for(const station of group.stations){
+        const hit = result.find(r => r.stationKey === normStation(station));
+        if(hit) ordered.push(hit);
+      }
+
+      return ordered;
+    }
   }
 
   function diagnostics(rows){
@@ -884,6 +1031,12 @@
   const elSearchStation = document.getElementById("searchStation");
   const elSearchBtn = document.getElementById("searchBtn");
 
+  const elGroupDay = document.getElementById("groupDay");
+  const elGroupRound = document.getElementById("groupRound");
+  const elGroupSelect = document.getElementById("groupSelect");
+  const elGroupBtn = document.getElementById("groupBtn");
+  const elGroupView = document.getElementById("groupView");
+
   const elResult = document.getElementById("result");
 
   const elPlanName = document.getElementById("planName");
@@ -905,6 +1058,21 @@
   let employees = [];
   let selectedEmployee = null;
   let lastParseInfo = null;
+
+  function populateGroupDropdown(){
+    elGroupSelect.innerHTML = "";
+    for(const g of STATION_GROUPS){
+      const opt = document.createElement("option");
+      opt.value = g.key;
+      opt.textContent = g.name;
+      elGroupSelect.appendChild(opt);
+    }
+
+    const ui = loadJSON(UI_KEY, { haptics:"on" });
+    if(ui.groupKey && STATION_GROUPS.some(g => g.key === ui.groupKey)){
+      elGroupSelect.value = ui.groupKey;
+    }
+  }
 
   function updateActiveStatus(){
     const state = loadState();
@@ -985,6 +1153,11 @@
     elSearchDay.disabled = !on;
     elSearchRound.disabled = !on;
     elSearchStation.disabled = !on;
+
+    elGroupBtn.disabled = !on;
+    elGroupDay.disabled = !on;
+    elGroupRound.disabled = !on;
+    elGroupSelect.disabled = !on;
   }
 
   function renderEmployeeButtons(){
@@ -1065,6 +1238,60 @@
     }
   }
 
+  function renderGroupView(){
+    if(!plan) throw new Error("Bitte erst Plan anwenden.");
+
+    const dayKey = elGroupDay.value;
+    const roundNo = parseInt(elGroupRound.value, 10);
+    const groupKey = elGroupSelect.value;
+    const mode = elWeekStart.value || "mon";
+
+    const group = STATION_GROUPS.find(g => g.key === groupKey);
+    if(!group) throw new Error("Bitte eine Gruppe auswählen.");
+
+    const entries = plan.groupAssignments(dayKey, roundNo, groupKey, mode);
+    const dayName = dayKeyToName(dayKey);
+
+    saveUiState();
+
+    elGroupView.classList.remove("hide");
+
+    if(!entries.length){
+      elGroupView.innerHTML = `
+        <div style="font-weight:900;">${safeHtml(group.name)}</div>
+        <div class="group-meta">
+          <span class="pill">${safeHtml(dayName)}</span>
+          <span class="pill">Runde <strong>${roundNo}</strong></span>
+          <span class="pill">Aktiv <strong>0</strong></span>
+        </div>
+        <div class="small" style="margin-top:10px;">
+          In dieser Gruppe wurden für den gewählten Zeitpunkt keine echten Mitarbeiter gefunden.
+        </div>
+      `;
+      return;
+    }
+
+    elGroupView.innerHTML = `
+      <div style="font-weight:900;">${safeHtml(group.name)}</div>
+      <div class="group-meta">
+        <span class="pill">${safeHtml(dayName)}</span>
+        <span class="pill">Runde <strong>${roundNo}</strong></span>
+        <span class="pill">Aktiv <strong>${entries.length}</strong></span>
+      </div>
+      <div class="group-list">
+        ${entries.map(item => `
+          <div class="group-row">
+            <div>
+              <div class="group-station">${safeHtml(item.station)}</div>
+              <div class="small mono">Takt ${item.takt}</div>
+            </div>
+            <div class="group-employee">${safeHtml(item.name)}</div>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
   function applyPlan(options = {}){
     const {
       showSuccess = true,
@@ -1073,6 +1300,7 @@
 
     const text = elTable.value;
     hideWeek();
+    hideGroupView();
     if(!keepResult) elResult.classList.add("hide");
 
     const parsed = parseTable(text);
@@ -1107,6 +1335,10 @@
       } catch {}
     }
 
+    try{
+      renderGroupView();
+    } catch {}
+
     if(showSuccess){
       if(parsed.skipped.length){
         const preview = parsed.skipped.slice(0, 3).map(x => safeHtml(x.reason)).join(" • ");
@@ -1117,7 +1349,7 @@
           <div class="small" style="margin-top:8px;">Gründe: ${preview}${parsed.skipped.length > 3 ? " • …" : ""}</div>
         `);
       } else {
-        showOk(`Plan angewendet. Mitarbeiter antippen für Wochenübersicht, Stations-Suche ist aktiv.`);
+        showOk(`Plan angewendet. Mitarbeiter antippen für Wochenübersicht, Stations-Suche und Gruppenansicht sind aktiv.`);
       }
     }
   }
@@ -1274,6 +1506,7 @@
   (function init(){
     const ui = loadJSON(UI_KEY, { haptics:"on" });
     setHaptics(ui.haptics || "on");
+    populateGroupDropdown();
     restoreUiState();
 
     const draft = loadDraft();
@@ -1282,6 +1515,7 @@
     refreshPlanSelect();
     setEnabled(false);
     populateStationDropdown(false);
+    hideGroupView();
 
     const state = loadState();
     if(state.activeId && state.plans[state.activeId]){
@@ -1320,8 +1554,12 @@
         hideWeek();
         showErr(e.message || String(e));
       }
+      try{
+        renderGroupView();
+      } catch{}
     } else {
       hideWeek();
+      hideGroupView();
     }
   });
 
@@ -1329,6 +1567,10 @@
   elSearchRound.addEventListener("change", saveUiState);
   elSearchStation.addEventListener("change", saveUiState);
   elPlanName.addEventListener("input", saveUiState);
+
+  elGroupDay.addEventListener("change", saveUiState);
+  elGroupRound.addEventListener("change", saveUiState);
+  elGroupSelect.addEventListener("change", saveUiState);
 
   elApplyBtn.addEventListener("click", ()=>{
     try{
@@ -1341,6 +1583,7 @@
       empBar.innerHTML = "";
       selectedEmployee = null;
       hideWeek();
+      hideGroupView();
       diagPills.innerHTML = "";
       showErr(e.message || String(e));
       saveUiState();
@@ -1358,6 +1601,7 @@
     selectedEmployee = null;
     setEnabled(false);
     hideWeek();
+    hideGroupView();
     elResult.classList.add("hide");
     diagPills.innerHTML = "";
     lastParseInfo = null;
@@ -1409,6 +1653,15 @@
     try{
       haptic("tap");
       searchStation();
+    } catch(e){
+      showErr(e.message || String(e));
+    }
+  });
+
+  elGroupBtn.addEventListener("click", ()=>{
+    try{
+      haptic("tap");
+      renderGroupView();
     } catch(e){
       showErr(e.message || String(e));
     }
