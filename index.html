@@ -395,11 +395,14 @@
   }
 
   function fixLikelyNumberToken(token){
-    return String(token || "")
-      .replace(/O/g, "0")
-      .replace(/I/g, "1")
-      .replace(/l/g, "1")
-      .replace(/S/g, "5");
+  const t = String(token || "").trim();
+  if(!/^[0-9OIlS]+$/.test(t)) return t;
+
+  return t
+    .replace(/O/g, "0")
+    .replace(/I/g, "1")
+    .replace(/l/g, "1")
+    .replace(/S/g, "5");
   }
 
   function isLikelyNumber(token){
