@@ -451,9 +451,9 @@
   const DAY_KEYS = ["mo","di","mi","do","fr","sa","so"];
   const DAY_NAMES = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 
-  const STORAGE_KEY = "taktplan_saved_v12";
-  const DRAFT_KEY   = "taktplan_draft_v7";
-  const UI_KEY      = "taktplan_ui_v10";
+  const STORAGE_KEY = "taktplan_saved_v13";
+  const DRAFT_KEY   = "taktplan_draft_v8";
+  const UI_KEY      = "taktplan_ui_v11";
 
   const STATION_GROUPS = [
     { key: "a", name: "Gruppe A", stations: ["BLENDE RE", "BLENDE LI", "AIRBAG"] },
@@ -461,6 +461,46 @@
     { key: "c", name: "Gruppe C", stations: ["T E R", "T E L", "T V R", "T V L", "SCHLOSS", "RINGE RE", "RINGE LI", "BEPL RE", "BEPL LI"] },
     { key: "d", name: "Gruppe D", stations: ["FOLIE RECHTS", "FOLIE LINKS"] }
   ];
+
+  // DOM refs
+  const haptOn = document.getElementById("haptOn");
+  const haptOff = document.getElementById("haptOff");
+
+  const empBar = document.getElementById("empBar");
+  const elWeekStart = document.getElementById("weekStart");
+  const elWeek = document.getElementById("week");
+
+  const elSearchDay = document.getElementById("searchDay");
+  const elSearchRound = document.getElementById("searchRound");
+  const elSearchStation = document.getElementById("searchStation");
+  const elSearchBtn = document.getElementById("searchBtn");
+
+  const elGroupDay = document.getElementById("groupDay");
+  const elGroupRound = document.getElementById("groupRound");
+  const elGroupSelect = document.getElementById("groupSelect");
+  const elGroupView = document.getElementById("groupView");
+
+  const elResult = document.getElementById("result");
+
+  const elPlanName = document.getElementById("planName");
+  const elSaveNew = document.getElementById("saveNew");
+  const elOverwriteActive = document.getElementById("overwriteActive");
+
+  const elActiveStatus = document.getElementById("activeStatus");
+
+  const elPlanSelect = document.getElementById("planSelect");
+  const elLoadSaved = document.getElementById("loadSaved");
+  const elDeleteSaved = document.getElementById("deleteSaved");
+
+  const elTable = document.getElementById("table");
+  const elApplyBtn = document.getElementById("applyBtn");
+  const elClear = document.getElementById("clearBtn");
+  const diagPills = document.getElementById("diagPills");
+
+  let plan = null;
+  let employees = [];
+  let selectedEmployee = null;
+  let lastParseInfo = null;
 
   function normName(s){
     return (s || "")
@@ -502,18 +542,23 @@
       .replace(/\bBLENDE\s+II\b/g, "BLENDE LI")
       .replace(/\bBLENDE\s+LI\b/g, "BLENDE LI")
       .replace(/\bBLENDE\s+RE\b/g, "BLENDE RE")
+
       .replace(/\bRINGE\s+II\b/g, "RINGE LI")
       .replace(/\bRINGE\s+LI\b/g, "RINGE LI")
       .replace(/\bRINGE\s+RE\b/g, "RINGE RE")
+
       .replace(/\bSITZE\s+II\b/g, "SITZE LI")
       .replace(/\bSITZE\s+LI\b/g, "SITZE LI")
       .replace(/\bSITZE\s+RE\b/g, "SITZE RE")
+
       .replace(/\bABLAGE\s+II\b/g, "ABLAGE LI")
       .replace(/\bABLAGE\s+LI\b/g, "ABLAGE LI")
       .replace(/\bABLAGE\s+RE\b/g, "ABLAGE RE")
+
       .replace(/\bBEPL\s+II\b/g, "BEPL LI")
       .replace(/\bBEPL\s+LI\b/g, "BEPL LI")
       .replace(/\bBEPL\s+RE\b/g, "BEPL RE")
+
       .replace(/\bFOLIE\s+II\b/g, "FOLIE LINKS")
       .replace(/\bFOLIE\s+LI\b/g, "FOLIE LINKS")
       .replace(/\bFOLIE\s+L\b/g, "FOLIE LINKS")
@@ -1052,45 +1097,6 @@
     };
   }
 
-  const haptOn = document.getElementById("haptOn");
-  const haptOff = document.getElementById("haptOff");
-
-  const empBar = document.getElementById("empBar");
-  const elWeekStart = document.getElementById("weekStart");
-  const elWeek = document.getElementById("week");
-
-  const elSearchDay = document.getElementById("searchDay");
-  const elSearchRound = document.getElementById("searchRound");
-  const elSearchStation = document.getElementById("searchStation");
-  const elSearchBtn = document.getElementById("searchBtn");
-
-  const elGroupDay = document.getElementById("groupDay");
-  const elGroupRound = document.getElementById("groupRound");
-  const elGroupSelect = document.getElementById("groupSelect");
-  const elGroupView = document.getElementById("groupView");
-
-  const elResult = document.getElementById("result");
-
-  const elPlanName = document.getElementById("planName");
-  const elSaveNew = document.getElementById("saveNew");
-  const elOverwriteActive = document.getElementById("overwriteActive");
-
-  const elActiveStatus = document.getElementById("activeStatus");
-
-  const elPlanSelect = document.getElementById("planSelect");
-  const elLoadSaved = document.getElementById("loadSaved");
-  const elDeleteSaved = document.getElementById("deleteSaved");
-
-  const elTable = document.getElementById("table");
-  const elApplyBtn = document.getElementById("applyBtn");
-  const elClear = document.getElementById("clearBtn");
-  const diagPills = document.getElementById("diagPills");
-
-  let plan = null;
-  let employees = [];
-  let selectedEmployee = null;
-  let lastParseInfo = null;
-
   function populateGroupDropdown(){
     elGroupSelect.innerHTML = "";
     for(const g of STATION_GROUPS){
@@ -1553,37 +1559,6 @@
 
     showOk(`Plan gelöscht: <strong>${safeHtml(name)}</strong>`);
   }
-
-  const haptOn = document.getElementById("haptOn");
-  const haptOff = document.getElementById("haptOff");
-  const empBar = document.getElementById("empBar");
-  const elWeekStart = document.getElementById("weekStart");
-  const elWeek = document.getElementById("week");
-  const elSearchDay = document.getElementById("searchDay");
-  const elSearchRound = document.getElementById("searchRound");
-  const elSearchStation = document.getElementById("searchStation");
-  const elSearchBtn = document.getElementById("searchBtn");
-  const elGroupDay = document.getElementById("groupDay");
-  const elGroupRound = document.getElementById("groupRound");
-  const elGroupSelect = document.getElementById("groupSelect");
-  const elGroupView = document.getElementById("groupView");
-  const elResult = document.getElementById("result");
-  const elPlanName = document.getElementById("planName");
-  const elSaveNew = document.getElementById("saveNew");
-  const elOverwriteActive = document.getElementById("overwriteActive");
-  const elActiveStatus = document.getElementById("activeStatus");
-  const elPlanSelect = document.getElementById("planSelect");
-  const elLoadSaved = document.getElementById("loadSaved");
-  const elDeleteSaved = document.getElementById("deleteSaved");
-  const elTable = document.getElementById("table");
-  const elApplyBtn = document.getElementById("applyBtn");
-  const elClear = document.getElementById("clearBtn");
-  const diagPills = document.getElementById("diagPills");
-
-  let plan = null;
-  let employees = [];
-  let selectedEmployee = null;
-  let lastParseInfo = null;
 
   (function init(){
     const ui = loadJSON(UI_KEY, { haptics:"on" });
