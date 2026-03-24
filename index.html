@@ -457,7 +457,7 @@
   const STATION_GROUPS = [
     { key: "a", name: "Gruppe A", stations: ["BLENDE RE", "BLENDE LI", "AIRBAG"] },
     { key: "b", name: "Gruppe B", stations: ["SITZE RE", "SITZE LI", "ABLAGE RE", "ABLAGE LI"] },
-    { key: "c", name: "Gruppe C", stations: ["T E R", "T E L", "T V R", "T V L", "SCHLOSS", "RINGE RE", "RINGE LI", "BEPL RE", "BEPL LI"] },
+    { key: "c", name: "Gruppe C", stations: ["TER", "TEL", "TVR", "TVL", "SCHLOSS", "RINGE RE", "RINGE LI", "BEPL RE", "BEPL LI"] },
     { key: "d", name: "Gruppe D", stations: ["FOLIE RECHTS", "FOLIE LINKS"] }
   ];
 
@@ -523,7 +523,6 @@
       .replace(/\bL1\b/g, "LI")
       .replace(/\b1I\b/g, "LI")
       .replace(/\bI1\b/g, "LI")
-      .replace(/\bL\b/g, "LI")
       .replace(/\bR\b/g, "RE")
       .replace(/\bTEL\b/g, "TEL")
       .replace(/\bTER\b/g, "TER")
