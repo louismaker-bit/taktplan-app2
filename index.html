@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 <html lang="de">
 <head>
@@ -310,7 +311,7 @@
       </div>
     </div>
 
-        <!-- 2 Mitarbeiter -->
+    <!-- 2 Mitarbeiter -->
     <div class="card">
       <div class="grid2">
         <div>
@@ -373,6 +374,9 @@
         <select id="groupSelect"></select>
       </div>
 
+      <div id="groupView" class="hide" style="margin-top:12px;"></div>
+    </div>
+
     <!-- 7 Takt Suche -->
     <div class="card">
       <label>Takt-Suche</label>
@@ -413,7 +417,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- 8 Plan einfügen -->
     <div class="card">
       <label>Plan einfügen (OCR / Tabelle)</label>
@@ -447,9 +451,9 @@
   const DAY_KEYS = ["mo","di","mi","do","fr","sa","so"];
   const DAY_NAMES = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
 
-  const STORAGE_KEY = "taktplan_saved_v10";
-  const DRAFT_KEY   = "taktplan_draft_v5";
-  const UI_KEY      = "taktplan_ui_v8";
+  const STORAGE_KEY = "taktplan_saved_v11";
+  const DRAFT_KEY   = "taktplan_draft_v6";
+  const UI_KEY      = "taktplan_ui_v9";
 
   const STATION_GROUPS = [
     {
@@ -486,81 +490,75 @@
   }
 
   function normStation(s){
-  let t = normName(s)
-    .replace(/[._,;:()/-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+    let t = normName(s)
+      .replace(/[._,;:()/-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
 
-  // Erst grobe OCR-Korrekturen
-  t = t
-    .replace(/\bII\b/g, "LI")          // Ii -> Li
-    .replace(/\bL1\b/g, "LI")
-    .replace(/\b1I\b/g, "LI")
-    .replace(/\bI1\b/g, "LI")
-    .replace(/\bR\b/g, "RE")           // einzelnes r -> Re
-    .replace(/\bTEL\b/g, "T E L")
-    .replace(/\bTER\b/g, "T E R")
-    .replace(/\bTVR\b/g, "T V R")
-    .replace(/\bTVL\b/g, "T V L");
+    t = t
+      .replace(/\bII\b/g, "LI")
+      .replace(/\bL1\b/g, "LI")
+      .replace(/\b1I\b/g, "LI")
+      .replace(/\bI1\b/g, "LI")
+      .replace(/\bR\b/g, "RE")
+      .replace(/\bTEL\b/g, "T E L")
+      .replace(/\bTER\b/g, "T E R")
+      .replace(/\bTVR\b/g, "T V R")
+      .replace(/\bTVL\b/g, "T V L");
 
-  // OCR-Wörter mit sicherer Richtung "RE"
-  // Laut dir gilt das auch für ähnliche Fälle
-  t = t
-    .replace(/\bBLENDER\b/g, "BLENDE RE")
-    .replace(/\bRINGER\b/g, "RINGE RE")
-    .replace(/\bSITZER\b/g, "SITZE RE")
-    .replace(/\bABLAGER\b/g, "ABLAGE RE")
-    .replace(/\bBEPLER\b/g, "BEPL RE")
-    .replace(/\bFOLIER\b/g, "FOLIE RECHTS");
+    t = t
+      .replace(/\bBLENDER\b/g, "BLENDE RE")
+      .replace(/\bRINGER\b/g, "RINGE RE")
+      .replace(/\bSITZER\b/g, "SITZE RE")
+      .replace(/\bABLAGER\b/g, "ABLAGE RE")
+      .replace(/\bBEPLER\b/g, "BEPL RE")
+      .replace(/\bFOLIER\b/g, "FOLIE RECHTS");
 
-  // typische Familien + Seiten normalisieren
-  t = t
-    .replace(/\bBLENDE\s+II\b/g, "BLENDE LI")
-    .replace(/\bBLENDE\s+LI\b/g, "BLENDE LI")
-    .replace(/\bBLENDE\s+RE\b/g, "BLENDE RE")
+    t = t
+      .replace(/\bBLENDE\s+II\b/g, "BLENDE LI")
+      .replace(/\bBLENDE\s+LI\b/g, "BLENDE LI")
+      .replace(/\bBLENDE\s+RE\b/g, "BLENDE RE")
 
-    .replace(/\bRINGE\s+II\b/g, "RINGE LI")
-    .replace(/\bRINGE\s+LI\b/g, "RINGE LI")
-    .replace(/\bRINGE\s+RE\b/g, "RINGE RE")
+      .replace(/\bRINGE\s+II\b/g, "RINGE LI")
+      .replace(/\bRINGE\s+LI\b/g, "RINGE LI")
+      .replace(/\bRINGE\s+RE\b/g, "RINGE RE")
 
-    .replace(/\bSITZE\s+II\b/g, "SITZE LI")
-    .replace(/\bSITZE\s+LI\b/g, "SITZE LI")
-    .replace(/\bSITZE\s+RE\b/g, "SITZE RE")
+      .replace(/\bSITZE\s+II\b/g, "SITZE LI")
+      .replace(/\bSITZE\s+LI\b/g, "SITZE LI")
+      .replace(/\bSITZE\s+RE\b/g, "SITZE RE")
 
-    .replace(/\bABLAGE\s+II\b/g, "ABLAGE LI")
-    .replace(/\bABLAGE\s+LI\b/g, "ABLAGE LI")
-    .replace(/\bABLAGE\s+RE\b/g, "ABLAGE RE")
+      .replace(/\bABLAGE\s+II\b/g, "ABLAGE LI")
+      .replace(/\bABLAGE\s+LI\b/g, "ABLAGE LI")
+      .replace(/\bABLAGE\s+RE\b/g, "ABLAGE RE")
 
-    .replace(/\bBEPL\s+II\b/g, "BEPL LI")
-    .replace(/\bBEPL\s+LI\b/g, "BEPL LI")
-    .replace(/\bBEPL\s+RE\b/g, "BEPL RE")
+      .replace(/\bBEPL\s+II\b/g, "BEPL LI")
+      .replace(/\bBEPL\s+LI\b/g, "BEPL LI")
+      .replace(/\bBEPL\s+RE\b/g, "BEPL RE")
 
-    .replace(/\bFOLIE\s+II\b/g, "FOLIE LINKS")
-    .replace(/\bFOLIE\s+LI\b/g, "FOLIE LINKS")
-    .replace(/\bFOLIE\s+L\b/g, "FOLIE LINKS")
-    .replace(/\bFOLIE\s+RE\b/g, "FOLIE RECHTS")
-    .replace(/\bFOLIE\s+R\b/g, "FOLIE RECHTS");
+      .replace(/\bFOLIE\s+II\b/g, "FOLIE LINKS")
+      .replace(/\bFOLIE\s+LI\b/g, "FOLIE LINKS")
+      .replace(/\bFOLIE\s+L\b/g, "FOLIE LINKS")
+      .replace(/\bFOLIE\s+RE\b/g, "FOLIE RECHTS")
+      .replace(/\bFOLIE\s+R\b/g, "FOLIE RECHTS");
 
-  // falls OCR nur Grundwort + einzelnes "R" schreibt
-  t = t
-    .replace(/\bBLENDE\s+R\b/g, "BLENDE RE")
-    .replace(/\bRINGE\s+R\b/g, "RINGE RE")
-    .replace(/\bSITZE\s+R\b/g, "SITZE RE")
-    .replace(/\bABLAGE\s+R\b/g, "ABLAGE RE")
-    .replace(/\bBEPL\s+R\b/g, "BEPL RE");
+    t = t
+      .replace(/\bBLENDE\s+R\b/g, "BLENDE RE")
+      .replace(/\bRINGE\s+R\b/g, "RINGE RE")
+      .replace(/\bSITZE\s+R\b/g, "SITZE RE")
+      .replace(/\bABLAGE\s+R\b/g, "ABLAGE RE")
+      .replace(/\bBEPL\s+R\b/g, "BEPL RE");
 
-  // Grundwörter vereinheitlichen
-  t = t
-    .replace(/\bBLENDE\b/g, "BLENDE")
-    .replace(/\bRINGE\b/g, "RINGE")
-    .replace(/\bSITZE\b/g, "SITZE")
-    .replace(/\bABLAGE\b/g, "ABLAGE")
-    .replace(/\bBEPL\b/g, "BEPL")
-    .replace(/\bSCHLOSS\b/g, "SCHLOSS")
-    .replace(/\bAIRBAG\b/g, "AIRBAG")
-    .replace(/\bFOLIE\b/g, "FOLIE");
+    t = t
+      .replace(/\bBLENDE\b/g, "BLENDE")
+      .replace(/\bRINGE\b/g, "RINGE")
+      .replace(/\bSITZE\b/g, "SITZE")
+      .replace(/\bABLAGE\b/g, "ABLAGE")
+      .replace(/\bBEPL\b/g, "BEPL")
+      .replace(/\bSCHLOSS\b/g, "SCHLOSS")
+      .replace(/\bAIRBAG\b/g, "AIRBAG")
+      .replace(/\bFOLIE\b/g, "FOLIE");
 
-  return t.replace(/\s+/g, " ").trim();
+    return t.replace(/\s+/g, " ").trim();
   }
 
   function safeHtml(str){
@@ -757,6 +755,7 @@
     elGroupView.classList.add("hide");
     elGroupView.innerHTML = "";
   }
+
   function refreshGroupViewAuto(scroll=true){
     if(!plan){
       hideGroupView();
@@ -768,7 +767,7 @@
     } catch(e){
       hideGroupView();
     }
-  }  
+  }
 
   function parseTable(text){
     const raw = cleanOCRText(text);
@@ -1302,7 +1301,7 @@
     }
   }
 
-  function renderGroupView(doScroll = true){{
+  function renderGroupView(doScroll = true){
     if(!plan) throw new Error("Bitte erst Plan anwenden.");
 
     const dayKey = elGroupDay.value;
@@ -1339,6 +1338,12 @@
           Erwartet: ${group.stations.map(s => safeHtml(s)).join(" • ")}
         </div>
       `;
+
+      if(doScroll){
+        setTimeout(()=>{
+          elGroupView.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 40);
+      }
       return;
     }
 
@@ -1372,7 +1377,7 @@
         ${missingStations.length ? missingStations.map(s => safeHtml(s)).join(" • ") : "nichts"}
       </div>
     `;
-    // automatisch zur Gruppenansicht scrollen
+
     if(doScroll){
       setTimeout(()=>{
         elGroupView.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1754,7 +1759,7 @@
       showErr(e.message || String(e));
     }
   });
-                                            
 </script>
 </body>
 </html>
+```
